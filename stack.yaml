@@ -2,5 +2,8 @@ flags: {}
 extra-package-dbs: []
 packages:
 - '.'
+- ../hhep.git/
+- ../ttree.git/
 extra-deps:
+- list-transformer-1.0.1
 resolver: lts-7.0
