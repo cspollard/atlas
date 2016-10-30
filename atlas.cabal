@@ -18,6 +18,7 @@ cabal-version:       >=1.10
 library
   exposed-modules:     Data.Atlas.CrossSections
                      , Data.Atlas.DataMC
+                     , Data.Atlas.Histogramming
                      , Data.Atlas.ProcessInfo
                      , Data.Atlas.PtEtaPhiE
                      , Data.Serialize.ZipList
@@ -28,12 +29,15 @@ library
 
   build-depends:       base == 4.9.*
                      , lens == 4.14.*
+                     , list-transformer == 1.0.*
+                     , foldl == 1.2.*
                      , bytestring == 0.10.*
                      , text == 1.2.*
                      , containers == 0.5.*
                      , attoparsec == 0.13.*
                      , cereal == 0.5.*
                      , hhep == 0.2.*
+                     , histogram-extras == 0.2.*
                      , ttree == 0.2.*
 
   hs-source-dirs:      src

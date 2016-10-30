@@ -4,6 +4,9 @@ packages:
 - '.'
 - ../hhep.git/
 - ../ttree.git/
+- ../histogram-extras.git/
 extra-deps:
+- cereal-text-0.1.0.2
+- histogram-fill-cereal-0.6.2.0
 - list-transformer-1.0.1
 resolver: lts-7.0
