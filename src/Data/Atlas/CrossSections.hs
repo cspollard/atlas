@@ -14,9 +14,8 @@ isEndOfLine c = c == '\n' || c == '\r'
 
 type CrossSectionInfo = IntMap Double
 
--- the first bit guarantees that data always has a cross section of 1.
 crossSectionInfo :: Parser CrossSectionInfo
-crossSectionInfo = fromList . ((0, 1.0) :) . rights <$>
+crossSectionInfo = fromList . rights <$>
                     (skipSpace *> many (eitherP comment xsecline) <* endOfInput)
     where
         comment = char '#' *> takeTill isEndOfLine *> skipSpace
@@ -28,4 +27,17 @@ crossSectionInfo = fromList . ((0, 1.0) :) . rights <$>
 readXSecFile :: FilePath -> IO (Maybe CrossSectionInfo)
 readXSecFile f = do
     bs <- BS.readFile f
-    return . maybeResult $ parse crossSectionInfo bs
+    g (parse crossSectionInfo bs)
+
+    where
+        g x = case x of
+                Done _ r -> return (Just r)
+                Partial h -> g $ h ""
+                Fail i contexts err -> do
+                    putStrLn "remaining input:"
+                    print i
+                    putStrLn "contexts:"
+                    print contexts
+                    putStrLn "error: "
+                    putStrLn err
+                    return Nothing
