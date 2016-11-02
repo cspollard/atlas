@@ -44,7 +44,7 @@ main = do
             <$> mapM decodeFile (infiles args)
 
     let im' = flip IM.mapWithKey im $
-                \ds (n, hs) -> if ds < 100000
+                \ds (n, hs) -> if ds < 300000
                                 then hs
                                 else over (traverse.noted._H1DD) (scaling $ lumi args * (xsecs IM.! ds) / n) hs
 
