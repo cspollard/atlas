@@ -44,9 +44,9 @@ main = do
             <$> mapM decodeFile (infiles args)
 
     let im' = flip IM.mapWithKey im $
-                \ds (n, hs) -> case ds of
-                                0 -> hs
-                                _ -> over (traverse.noted._H1DD) (scaling $ lumi args * (xsecs IM.! ds) / n) hs
+                \ds (n, hs) -> if ds < 100000
+                                then hs
+                                else over (traverse.noted._H1DD) (scaling $ lumi args * (xsecs IM.! ds) / n) hs
 
     iforM_ im' $
         \ds hs -> T.writeFile (outfolder args ++ '/' : show ds ++ ".yoda")
