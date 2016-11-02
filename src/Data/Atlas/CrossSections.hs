@@ -12,16 +12,20 @@ import Data.Either (rights)
 isEndOfLine :: Char -> Bool
 isEndOfLine c = c == '\n' || c == '\r'
 
-type CrossSectionInfo = IntMap Double
+type CrossSectionInfo = IntMap (Double, String)
 
 crossSectionInfo :: Parser CrossSectionInfo
 crossSectionInfo = fromList . rights <$>
                     (skipSpace *> many (eitherP comment xsecline) <* endOfInput)
     where
         comment = char '#' *> takeTill isEndOfLine *> skipSpace
-        xsecline = (,) <$> (decimal <* skipSpace)
-                       <*> ((*) <$> (double <* skipSpace)
-                                <*> option 1.0 (double <* skipSpace))
+        xsecline =
+            (,) <$> dsid <*> ( (,) <$> xsec <*> shower )
+                    
+
+        dsid = decimal <* skipSpace
+        xsec = (*) <$> (double <* skipSpace) <*> (double <* skipSpace)
+        shower = many1 (letter_ascii <|> digit) <* skipSpace
 
 
 readXSecFile :: FilePath -> IO (Maybe CrossSectionInfo)

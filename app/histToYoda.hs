@@ -6,7 +6,7 @@
 module Main where
 
 import Control.Lens
-
+import Control.Monad ((>=>))
 import Control.Applicative (ZipList(..), liftA2)
 
 import qualified Data.ByteString.Lazy as BS
@@ -38,10 +38,10 @@ main = do
     args <- getRecord "histToYoda" :: IO Args
 
     xsecs <- fromMaybe (error "failed to parse xsec file.")
-                <$> readXSecFile (xsecfile args)
+                <$> (fmap.fmap.fmap) fst (readXSecFile (xsecfile args))
 
     im <- foldl (IM.unionWith mergeRuns) IM.empty
-            <$> mapM decodeFile (infiles args)
+            <$> mapM (decodeFile >=> (\f -> print f >> return f)) (infiles args)
 
     let im' = flip IM.mapWithKey im $
                 \ds (n, hs) -> if ds < 300000
