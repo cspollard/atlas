@@ -41,7 +41,7 @@ main = do
                 <$> (fmap.fmap.fmap) fst (readXSecFile (xsecfile args))
 
     im <- foldl (IM.unionWith mergeRuns) IM.empty
-            <$> mapM (decodeFile >=> (\f -> print f >> return f)) (infiles args)
+            <$> mapM decodeFile (infiles args)
 
     let im' = flip IM.mapWithKey im $
                 \ds (n, hs) -> if ds < 300000
