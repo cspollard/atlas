@@ -1,12 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE TupleSections #-}
 
 module Main where
 
 import Control.Lens
-import Control.Monad ((>=>))
 import Control.Applicative (ZipList(..), liftA2)
 
 import qualified Data.ByteString.Lazy as BS
@@ -23,19 +21,36 @@ import Data.Maybe (fromMaybe)
 import Data.YODA.Obj
 import Data.Atlas.CrossSections
 
-import Options.Generic
+import Options.Applicative
 
-data Args = Args { outfolder :: String
-                 , infiles :: [String]
-                 , xsecfile :: String
-                 , lumi :: Double
-                 } deriving (Show, Generic)
+data InArgs =
+    InArgs
+        { outfolder :: String
+        , xsecfile :: String
+        , lumi :: Double
+        , infiles :: [String]
+        }
 
-instance ParseRecord Args where
+inArgs :: Parser InArgs
+inArgs = InArgs
+    <$> strOption
+        ( long "outfolder"
+        <> metavar "OUTFOLDER" )
+    <*> strOption
+        ( long "xsecfile"
+        <> metavar "XSECFILE" )
+    <*> option auto
+        ( long "lumi"
+        <> metavar "LUMI" )
+    <*> some (strArgument (metavar "INFILES"))
+
+opts :: ParserInfo InArgs
+opts = info (helper <*> inArgs) fullDesc
+
 
 main :: IO ()
 main = do
-    args <- getRecord "histToYoda" :: IO Args
+    args <- execParser opts
 
     xsecs <- fromMaybe (error "failed to parse xsec file.")
                 <$> (fmap.fmap.fmap) fst (readXSecFile (xsecfile args))
@@ -45,7 +60,11 @@ main = do
 
     let im' = flip IM.mapWithKey im $
                 \ds (n, hs) -> if ds < 300000
-                                then hs
+                                then hs & traverse.annots.at "LineStyle" ?~ "none"
+                                        & traverse.annots.at "LineColor" ?~ "Black"
+                                        & traverse.annots.at "DotSize" ?~ "0.1"
+                                        & traverse.annots.at "ErrorBars" ?~ "1"
+                                        & traverse.annots.at "PolyMarker" ?~ "*"
                                 else over (traverse.noted._H1DD) (scaling $ lumi args * (xsecs IM.! ds) / n) hs
 
     iforM_ im' $
