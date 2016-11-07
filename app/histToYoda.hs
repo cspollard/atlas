@@ -22,6 +22,7 @@ import Data.YODA.Obj
 import Data.Atlas.CrossSections
 
 import Options.Applicative
+import System.IO (hFlush, stdout)
 
 data InArgs =
     InArgs
@@ -76,6 +77,7 @@ mergeRuns (sumwgt, hs) (sumwgt', hs') = (sumwgt+sumwgt', liftA2 mergeYO hs hs')
 
 decodeFile :: String -> IO (IM.IntMap (Double, ZipList YodaObj))
 decodeFile f = do
+    putStrLn ("decoding file " ++ f) >> hFlush stdout
     eim <- decodeLazy . decompress <$> BS.readFile f ::
                 IO (Either String (IM.IntMap (Double, ZipList YodaObj)))
 
