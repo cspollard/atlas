@@ -60,7 +60,7 @@ main = do
             <$> mapM decodeFile (infiles args)
 
     let im' = flip IM.mapWithKey im $
-                \ds (n, hs) -> if ds < 300000
+                \ds (n, hs) -> if ds == 0
                                 then hs & traverse.annots.at "LineStyle" ?~ "none"
                                         & traverse.annots.at "LineColor" ?~ "Black"
                                         & traverse.annots.at "DotSize" ?~ "0.1"
