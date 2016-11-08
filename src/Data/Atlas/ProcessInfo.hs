@@ -22,12 +22,9 @@ processTitle ds | ds == 0               = "data"
                 | ds == 410002          = "Pow+Py (radLo)"
                 | ds == 410003          = "aMC+H++"
                 | ds == 410004          = "Pow+H++"
-                | btwn 361300 361323 ds = "Wenu" <> hf ds
-                | btwn 361324 361347 ds = "Wmunu" <> hf ds
-                | btwn 361348 361371 ds = "Wtaunu" <> hf ds
-                | btwn 361372 361395 ds = "Zee" <> hf ds
-                | btwn 361396 361419 ds = "Zmumu" <> hf ds
-                | btwn 361420 361443 ds = "Ztautau" <> hf ds
-                | btwn 361444 361462 ds = "Znunu" <> hf ds
-                | btwn 410064 410065 ds = "Wt"
+                | btwn 363388 363411 ds = "Zee" <> hf ds
+                | btwn 363364 363387 ds = "Zmumu" <> hf ds
+                | btwn 363102 363122 ds = "Ztautau" <> hf ds
+                | btwn 363361 363363 ds = "Ztautau" <> hf ds
+                | btwn 410147 410148 ds = "Wt"
                 | otherwise             = "other"
