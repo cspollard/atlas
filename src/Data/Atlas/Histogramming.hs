@@ -58,7 +58,8 @@ fxs =++= fys = (++) <$> fxs <*> fys
 dsigdXpbY :: Text -> Text -> Text
 dsigdXpbY x y = "$\\frac{d\\sigma}{d" <> x <> "} \\frac{\\mathrm{pb}}{" <> y <> "}$"
 
-gev, rad, pt :: Text
+mev, gev, rad, pt :: Text
+mev = "\\mathrm{MeV}"
 gev = "\\mathrm{GeV}"
 rad = "\\mathrm{rad}"
 pt = "p_{\\mathrm{T}}"
@@ -75,4 +76,3 @@ yodaProf nb xmin xmax p xl yl = yodaProf1D nb xmin xmax
     & annots . at "Path"   ?~ p
     & annots . at "XLabel" ?~ xl
     & annots . at "YLabel" ?~ yl
-
