@@ -17,7 +17,11 @@ hf x = case (x `mod` 3) `compare` 1 of
 
 processTitle :: Int -> Text
 processTitle ds | ds == 0               = "data"
-                | ds == 410000          = "ttbar"
+                | ds == 410000          = "Pow+Py (nominal)"
+                | ds == 410001          = "Pow+Py (radHi)"
+                | ds == 410002          = "Pow+Py (radLo)"
+                | ds == 410003          = "aMC+H++"
+                | ds == 410004          = "Pow+H++"
                 | btwn 361300 361323 ds = "Wenu" <> hf ds
                 | btwn 361324 361347 ds = "Wmunu" <> hf ds
                 | btwn 361348 361371 ds = "Wtaunu" <> hf ds
