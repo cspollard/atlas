@@ -21,8 +21,6 @@ library
                      , Data.Atlas.Histogramming
                      , Data.Atlas.ProcessInfo
                      , Data.Atlas.PtEtaPhiE
-                     , Data.Serialize.ZipList
-                     , Data.Serialize.CTypes
 
   other-modules:
   other-extensions:

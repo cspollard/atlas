@@ -44,7 +44,6 @@ infixl 2 <$=
 (<$=) :: F.Fold c b -> (a -> c) -> F.Fold a b
 (<$=) = flip F.premap
 
-
 infixr 3 =:=
 (=:=) :: Applicative f => f a -> f [a] -> f [a]
 fx =:= fxs = (:) <$> fx <*> fxs
@@ -65,14 +64,14 @@ rad = "\\mathrm{rad}"
 pt = "p_{\\mathrm{T}}"
 
 
-yodaHist :: Int -> Double -> Double -> Text -> Text -> Text -> YodaObj
-yodaHist nb xmin xmax p xl yl = yodaHist1D nb xmin xmax
-    & annots . at "Path"   ?~ p
-    & annots . at "XLabel" ?~ xl
-    & annots . at "YLabel" ?~ yl
+yodaHist :: Int -> Double -> Double -> Text -> Text -> YodaObj
+yodaHist nb xmin xmax xl yl =
+    yodaHist1D nb xmin xmax
+        & annots . at "XLabel" ?~ xl
+        & annots . at "YLabel" ?~ yl
 
-yodaProf :: Int -> Double -> Double -> Text -> Text -> Text -> YodaObj
-yodaProf nb xmin xmax p xl yl = yodaProf1D nb xmin xmax
-    & annots . at "Path"   ?~ p
-    & annots . at "XLabel" ?~ xl
-    & annots . at "YLabel" ?~ yl
+yodaProf :: Int -> Double -> Double -> Text -> Text -> YodaObj
+yodaProf nb xmin xmax xl yl =
+    yodaProf1D nb xmin xmax
+        & annots . at "XLabel" ?~ xl
+        & annots . at "YLabel" ?~ yl
