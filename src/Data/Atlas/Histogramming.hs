@@ -105,5 +105,5 @@ selector :: (a -> Bool) -> Prism' a a
 selector f = prism' id $ \x -> if f x then Just x else Nothing
 
 infixl 2 <$$=
-(<$$=) :: Fill b -> Getter a b -> Fill a
-fs <$$= l = F.premap (first (view l)) fs
+(<$$=) :: Field1 s b s1 b1 => F.Fold b r -> Getting b1 s1 b1 -> F.Fold s r
+f <$$= h = F.premap (over _1 (view h)) f
