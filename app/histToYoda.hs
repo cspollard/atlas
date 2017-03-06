@@ -4,6 +4,7 @@
 
 module Main where
 
+import Data.Monoid
 import           Codec.Compression.GZip   (decompress)
 import           Control.Lens
 import qualified Data.ByteString.Lazy     as BS
