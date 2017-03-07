@@ -3,7 +3,6 @@ extra-package-dbs: []
 packages:
 - '.'
 - ../hhep.git/
-- ../ttree.git/
 - ../histogram-extras.git/
 extra-deps:
 - cereal-text-0.1.0.2
