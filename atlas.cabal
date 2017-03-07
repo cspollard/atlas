@@ -48,8 +48,8 @@ library
   ghc-options:         -Wall -O1
   ghc-prof-options:    -Wall -O0 -fprof-auto -caf-all
 
-executable histToYoda
-  main-is:             app/histToYoda.hs
+executable run-atlas-toyoda
+  main-is:             app/run-atlas-toyoda.hs
   build-depends:       base == 4.9.*
                      , lens == 4.15.*
                      , containers == 0.5.*
