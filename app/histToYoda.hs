@@ -4,13 +4,13 @@
 
 module Main where
 
-import Data.Monoid
 import           Codec.Compression.GZip   (decompress)
 import           Control.Lens
 import qualified Data.ByteString.Lazy     as BS
 import qualified Data.IntMap.Strict       as IM
 import qualified Data.Map.Strict          as M
 import           Data.Maybe               (fromMaybe)
+import           Data.Monoid
 import           Data.Serialize           (decodeLazy)
 import qualified Data.Text                as T
 import qualified Data.Text.IO             as T
