@@ -84,7 +84,7 @@ mainWith writeFiles = do
                         hs
                           & traverse.traverse.annots.at "LineStyle" ?~ "solid"
                           & traverse.traverse.annots.at "LineColor" ?~ "Black"
-                          & traverse.traverse.annots.at "DotSize" ?~ "0.2"
+                          & traverse.traverse.annots.at "DotSize" ?~ "0.15"
                           & traverse.traverse.annots.at "ErrorBars" ?~ "1"
                           & traverse.traverse.annots.at "PolyMarker" ?~ "*"
                           & traverse.traverse.annots.at "Title" ?~ "\"data\""
