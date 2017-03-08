@@ -10,12 +10,12 @@ module Data.Atlas.Histogramming
   , Fill, channel, channels
   , hEmpty, hist1DDef, prof1DDef
   , nH, ptH, etaH, lvHs
-  , (<$$=)
+  , (<$=), (<$$=)
   ) where
 
 import qualified Control.Foldl          as F
 import           Control.Lens
-import           Data.Bifunctor
+import           Data.Atlas.Corrected
 import           Data.HEP.LorentzVector as X
 import           Data.Hist              as X
 import qualified Data.Histogram.Generic as G
@@ -36,10 +36,11 @@ rad = "\\mathrm{rad}"
 pt = "p_{\\mathrm{T}}"
 
 
-type Fill a = F.Fold (a, Double) YodaFolder
+type Fill a = F.Fold (Corrected ScaleFactor a) YodaFolder
+
 
 channel :: Text -> (a -> Bool) -> Fill a -> Fill a
-channel n f fills = M.mapKeysMonotonic (n <>) <$> F.handles (selector (f.fst)) fills
+channel n f fills = M.mapKeysMonotonic (n <>) <$> F.handles (selector (f.fst.runCorrected)) fills
 
 
 channels :: [(Text, a -> Bool)] -> Fill a -> Fill a
@@ -52,35 +53,38 @@ hEmpty b =
       uo = Just (mempty, mempty)
   in G.histogramUO b uo v
 
+toCorrected :: F.Fold (a, b) r -> F.Fold (Corrected (Product b) a) r
+toCorrected = F.premap (fmap getProduct . runCorrected)
+
 hist1DDef
   :: (BinValue b ~ Double, IntervalBin b)
-  => b -> Text -> Text -> Text -> F.Fold (Double, Double) YodaFolder
+  => b -> Text -> Text -> Text -> Fill Double
 hist1DDef b xt yt pa =
-    M.singleton pa
-      . Annotated [("XLabel", xt), ("YLabel", yt)]
-      . H1DD
-      . over bins toArbBin
-      <$> hist1DFill (hEmpty b)
+  M.singleton pa
+    . Annotated [("XLabel", xt), ("YLabel", yt)]
+    . H1DD
+    . over bins toArbBin
+    <$> toCorrected (hist1DFill (hEmpty b))
 
 prof1DDef
   :: (BinValue b ~ Double, IntervalBin b)
-  => b -> Text -> Text -> Text -> F.Fold ((Double, Double), Double) YodaFolder
+  => b -> Text -> Text -> Text -> Fill (Double, Double)
 prof1DDef b xt yt pa =
-    M.singleton pa
-      . Annotated [("XLabel", xt), ("YLabel", yt)]
-      . P1DD
-      . over bins toArbBin
-      <$> prof1DFill (hEmpty b)
+  M.singleton pa
+    . Annotated [("XLabel", xt), ("YLabel", yt)]
+    . P1DD
+    . over bins toArbBin
+    <$> toCorrected (prof1DFill (hEmpty b))
 
 
 nH :: Foldable f => Int -> Fill (f a)
 nH n =
-  F.premap (first $ fromIntegral . length)
+  F.premap (fmap $ fromIntegral . length)
     $ hist1DDef (binD 0 n (fromIntegral n)) "$n$" (dsigdXpbY "n" "1") "/n"
 
 ptH :: HasLorentzVector a => Fill a
 ptH =
-  F.premap (first $ view lvPt)
+  F.premap (fmap $ view lvPt)
     $ hist1DDef
       (binD 0 50 500)
       "$p_{\\mathrm T}$ [GeV]"
@@ -89,7 +93,7 @@ ptH =
 
 etaH :: HasLorentzVector a => Fill a
 etaH =
-  F.premap (first $ view lvEta)
+  F.premap (fmap $ view lvEta)
     $ hist1DDef
       (binD (-3) 39 3)
       "$\\eta$"
@@ -104,6 +108,10 @@ lvHs = mappend <$> ptH <*> etaH
 selector :: (a -> Bool) -> Prism' a a
 selector f = prism' id $ \x -> if f x then Just x else Nothing
 
+infixl 2 <$=
+(<$=) :: Fill a -> (b -> a) -> Fill b
+h <$= f = F.premap (fmap f) h
+
 infixl 2 <$$=
-(<$$=) :: Field1 s b s1 b1 => F.Fold b r -> Getting b1 s1 b1 -> F.Fold s r
-f <$$= h = F.premap (over _1 (view h)) f
+(<$$=) :: Fill a -> (b -> Corrected ScaleFactor a) -> Fill b
+h <$$= f = F.premap (f =<<) h

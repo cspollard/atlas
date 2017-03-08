@@ -1,29 +1,33 @@
 {-# LANGUAGE DeriveFunctor              #-}
+{-# LANGUAGE DeriveTraversable          #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TupleSections              #-}
 
 module Data.Atlas.Corrected
-  ( CorrectedT, withCorrection, runCorrection
-  , inCorrectedT, mapCorrectedT, Corrected
-  , ScaleFactor
+  ( CorrectedT, withCorrection, runCorrectedT, runCorrected
+  , inCorrectedT, mapCorrectedT, Corrected, correctedT
+  , ScaleFactor, SF, NoSF
   ) where
 
 import           Control.Monad.Trans.Class
-import           Control.Monad.Trans.Writer
+import           Control.Monad.Trans.Writer.Strict
 import           Data.Functor.Identity
 import           Data.Monoid
 -- import           List.Transformer
 
--- TODO
--- we explicitly do not provide Foldable because it would let us escape the
--- Corrected context.
 newtype CorrectedT b m a = CT { unCT :: WriterT b m a }
-  deriving (Show, Functor, Applicative, Monad, MonadTrans)
+  deriving (Show, Functor, Applicative, Monad, MonadTrans, Foldable, Traversable)
 
 type Corrected b = CorrectedT b Identity
 
-runCorrection :: CorrectedT w m a -> m (a, w)
-runCorrection = runWriterT . unCT
+correctedT :: m (a, b) -> CorrectedT b m a
+correctedT = CT . WriterT
+
+runCorrectedT :: CorrectedT w m a -> m (a, w)
+runCorrectedT = runWriterT . unCT
+
+runCorrected :: Corrected w a -> (a, w)
+runCorrected = runIdentity . runCorrectedT
 
 withCorrection :: Monad m => (a, b) -> CorrectedT b m a
 withCorrection = CT . writer
@@ -39,6 +43,8 @@ mapCorrectedT
 mapCorrectedT f = inCorrectedT $ mapWriterT f
 
 type ScaleFactor = Product Double
+type SF = ScaleFactor
+type NoSF = First Double
 
 -- instance Fractional a => Fractional (Product a) where
 --   recip (Product x) = Product $ recip x
