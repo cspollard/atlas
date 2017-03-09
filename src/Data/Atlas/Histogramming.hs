@@ -8,7 +8,7 @@ module Data.Atlas.Histogramming
   , dsigdXpbY
   , mev, gev, rad, pt
   , Fill, channel, channels
-  , hEmpty, hist1DDef, prof1DDef
+  , hEmpty, hist1DDef, prof1DDef, hist2DDef
   , nH, ptH, etaH, lvHs
   , (<$=), (<$$=)
   ) where
@@ -65,6 +65,17 @@ hist1DDef b xt yt pa =
     . H1DD
     . over bins toArbBin
     <$> toCorrected (hist1DFill (hEmpty b))
+
+hist2DDef
+  :: (BinValue b ~ Double, IntervalBin b)
+  => b -> b -> Text -> Text -> Text -> Fill (Double, Double)
+hist2DDef bx by xt yt pa =
+  M.singleton pa
+    . Annotated [("XLabel", xt), ("YLabel", yt)]
+    . H2DD
+    . over bins (fmapBinX toArbBin)
+    . over bins (fmapBinY toArbBin)
+    <$> toCorrected (hist2DFill (hEmpty (Bin2D bx by)))
 
 prof1DDef
   :: (BinValue b ~ Double, IntervalBin b)
