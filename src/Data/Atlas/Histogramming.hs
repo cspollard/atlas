@@ -10,11 +10,12 @@ module Data.Atlas.Histogramming
   , Fill, channel, channels
   , hEmpty, hist1DDef, prof1DDef, hist2DDef
   , nH, ptH, etaH, lvHs
-  , (<$=), (<$$=)
+  , (<$=), (<$$=), (<$$$=)
   ) where
 
 import qualified Control.Foldl          as F
 import           Control.Lens
+import           Control.Monad          (join)
 import           Data.Atlas.Corrected
 import           Data.HEP.LorentzVector as X
 import           Data.Hist              as X
@@ -53,8 +54,10 @@ hEmpty b =
       uo = Just (mempty, mempty)
   in G.histogramUO b uo v
 
+
 toCorrected :: F.Fold (a, b) r -> F.Fold (Corrected (Product b) a) r
 toCorrected = F.premap (fmap getProduct . runCorrected)
+
 
 hist1DDef
   :: (BinValue b ~ Double, IntervalBin b)
@@ -119,10 +122,23 @@ lvHs = mappend <$> ptH <*> etaH
 selector :: (a -> Bool) -> Prism' a a
 selector f = prism' id $ \x -> if f x then Just x else Nothing
 
+
+-- TODO
+-- these don't really build up in the way I imagined they would.
 infixl 2 <$=
-(<$=) :: Fill a -> (b -> a) -> Fill b
+(<$=) :: Functor f => F.Fold (f c) b -> (a -> c) -> F.Fold (f a) b
 h <$= f = F.premap (fmap f) h
 
 infixl 2 <$$=
-(<$$=) :: Fill a -> (b -> Corrected ScaleFactor a) -> Fill b
-h <$$= f = F.premap (f =<<) h
+(<$$=)
+  :: (Monad m, Traversable m)
+  => F.Fold (m c) b -> (a -> m c) -> F.Fold (m a) b
+h <$$= f = h <$$$= (Identity . f)
+
+infixl 2 <$$$=
+(<$$$=)
+  :: (Monad m, Traversable m, Applicative f, Foldable f)
+  => F.Fold (m c) b -> (a -> f (m c)) -> F.Fold (m a) b
+f <$$$= g = F.premap (reduce . fmap g) . F.handles folded $ f
+  where
+    reduce =  fmap join . sequenceA
