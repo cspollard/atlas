@@ -28,7 +28,8 @@ import           Data.YODA.Obj          as X
 
 
 dsigdXpbY :: Text -> Text -> Text
-dsigdXpbY x y = "$\\frac{d\\sigma}{d" <> x <> "} \\frac{\\mathrm{pb}}{" <> y <> "}$"
+dsigdXpbY x y =
+  "$\\frac{d\\sigma}{d" <> x <> "} \\frac{\\mathrm{pb}}{" <> y <> "}$"
 
 mev, gev, rad, pt :: Text
 mev = "\\mathrm{MeV}"
@@ -41,7 +42,8 @@ type Fill a = F.Fold (Corrected ScaleFactor a) YodaFolder
 
 
 channel :: Text -> (a -> Bool) -> Fill a -> Fill a
-channel n f fills = M.mapKeysMonotonic (n <>) <$> F.handles (selector (f.fst.runCorrected)) fills
+channel n f fills =
+  M.mapKeysMonotonic (n <>) <$> F.handles (selector (f.fst.runCorrected)) fills
 
 
 channels :: [(Text, a -> Bool)] -> Fill a -> Fill a

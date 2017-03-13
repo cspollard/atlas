@@ -1,7 +1,7 @@
 module Data.Atlas.Corrected
   ( CorrectedT, withCorrection, runCorrectedT, runCorrected
   , mapCorrectedT, Corrected, correctedT
-  , ScaleFactor, SF, NoSF, runSF
+  , ScaleFactor, SF, NoSF, runSF, sf
   ) where
 
 import           Control.Monad.Trans.Writer.Lazy
@@ -40,5 +40,8 @@ type SF = ScaleFactor
 
 runSF :: SF -> Double
 runSF = getProduct . fold . getDual
+
+sf :: T.Text -> Double -> SF
+sf t = Dual . M.singleton t . Product
 
 type NoSF = ()
