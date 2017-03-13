@@ -9,8 +9,6 @@ import           Data.Functor.Identity
 import           Data.Kind
 
 type VariationT (s :: k) = IdentityT
--- newtype VariationT (s :: k) m a = VariationT { unVary :: IdentityT m a }
---   deriving (Functor, Applicative, Monad, MonadTrans, MonadIO)
 
 type Variation (s :: k) = VariationT s Identity
 

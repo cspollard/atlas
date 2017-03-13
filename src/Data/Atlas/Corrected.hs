@@ -33,29 +33,3 @@ mapCorrectedT = mapWriterT
 type ScaleFactor = Product Double
 type SF = ScaleFactor
 type NoSF = ()
-
--- instance Fractional a => Fractional (Product a) where
---   recip (Product x) = Product $ recip x
---   (Product x) / (Product y) = Product (x/y)
---
--- data Event =
---   Event
---     { mu   :: Corrected ScaleFactor Double
---     , jets :: ListT (Corrected ScaleFactor) Double
---     }
---
--- takeWhileLT :: Monad m => (a -> Bool) -> ListT m a -> ListT m a
--- takeWhileLT f l = ListT $ do
---   n <- next l
---   case n of
---     (Cons x l') ->
---       if f x
---         then return . Cons x $ takeWhileLT f l'
---         else return Nil
---     Nil -> return Nil
---
--- lengthLT :: Monad m => ListT m b -> m Int
--- lengthLT l = fold (+) 0 id $ const 1 <$> l
---
--- njets :: Event -> Corrected ScaleFactor Int
--- njets = lengthLT . takeWhileLT (> 30) . jets
