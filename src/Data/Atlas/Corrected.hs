@@ -8,7 +8,8 @@ import           Control.Monad.Trans.Writer.Lazy
 import           Data.Functor.Identity
 import           Data.Monoid
 
--- a scale factor is just a writer monad with the underlying monoid (Reals, *)
+-- a scale factor is just a writer monad with the underlying monoid of
+-- Reals under multiplication.
 type CorrectedT = WriterT
 type Corrected b = CorrectedT b Identity
 
