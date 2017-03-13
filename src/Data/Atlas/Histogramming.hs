@@ -55,8 +55,9 @@ hEmpty b =
   in G.histogramUO b uo v
 
 
-toCorrected :: F.Fold (a, b) r -> F.Fold (Corrected (Product b) a) r
-toCorrected = F.premap (fmap getProduct . runCorrected)
+toCorrected
+  :: F.Fold (a, Double) r -> F.Fold (Corrected SF a) r
+toCorrected = F.premap (fmap runSF . runCorrected)
 
 
 hist1DDef

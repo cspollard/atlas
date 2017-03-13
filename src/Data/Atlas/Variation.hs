@@ -1,30 +1,56 @@
-{-# LANGUAGE PolyKinds  #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE TypeInType #-}
+{-# LANGUAGE DeriveFunctor              #-}
+{-# LANGUAGE DeriveTraversable          #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE PolyKinds                  #-}
+{-# LANGUAGE RankNTypes                 #-}
+{-# LANGUAGE ScopedTypeVariables        #-}
+{-# LANGUAGE TypeInType                 #-}
 
-module Data.Atlas.Variation where
+module Data.Atlas.Variation
+  ( VariationT, Variation, variationT, variation
+  , mapVariationT, mapVariation
+  , runVariationT, runVariation
+  , NominalT, Nominal
+  ) where
 
-import           Control.Monad.Trans.Identity
+import           Control.Monad.Trans.Class
+import           Control.Monad.IO.Class
 import           Data.Functor.Identity
-import           Data.Kind
+import           Data.Proxy
+import           Data.Text                 as T
+import           GHC.TypeLits
 
-type VariationT (s :: k) = IdentityT
+-- TODO
+-- I'm not sure why I need a newtype here instead of a type synonym.
+-- this is exactly a tagged IdentityT...
+newtype VariationT (s :: k) m a = VT { unVT :: m a }
+  deriving (Functor, Applicative, Monad, Foldable, Traversable, Show, Monoid)
 
 type Variation (s :: k) = VariationT s Identity
+type NominalT = VariationT "nominal"
+type Nominal = NominalT Identity
+
+instance MonadTrans (VariationT s) where
+  lift = VT
+
+instance MonadIO m => MonadIO (VariationT s m) where
+  liftIO = lift . liftIO
 
 variationT :: m a -> VariationT s m a
-variationT = IdentityT
-
-mapVariationT
-  :: forall k k1 (m :: k1 -> *) (a :: k1) (n :: k -> *) (b :: k).
-  (m a -> n b) -> IdentityT m a -> IdentityT n b
-mapVariationT = mapIdentityT
+variationT = VT
 
 variation :: a -> Variation s a
 variation = variationT . Identity
 
-runVariationT :: VariationT s m a -> m a
-runVariationT = runIdentityT
+mapVariationT :: (m a -> n b) -> VariationT s m a -> VariationT s n b
+mapVariationT f = VT . f . unVT
 
-runVariation :: Variation s a -> a
-runVariation = runIdentity . runVariationT
+mapVariation :: (a -> b) -> Variation s a -> Variation s b
+mapVariation = mapVariationT . fmap
+
+runVariationT :: forall s f t. KnownSymbol s => VariationT s f t -> (Text, f t)
+runVariationT vsft =
+  (T.pack $ symbolVal (Proxy :: Proxy s), unVT vsft)
+
+runVariation :: KnownSymbol s => Variation s a -> (Text, a)
+runVariation = fmap runIdentity . runVariationT
