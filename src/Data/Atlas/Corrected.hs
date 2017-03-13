@@ -1,50 +1,37 @@
-{-# LANGUAGE DeriveFunctor              #-}
-{-# LANGUAGE DeriveTraversable          #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE TupleSections              #-}
-
 module Data.Atlas.Corrected
   ( CorrectedT, withCorrection, runCorrectedT, runCorrected
-  , inCorrectedT, mapCorrectedT, Corrected, correctedT
+  , mapCorrectedT, Corrected, correctedT
   , ScaleFactor, SF, NoSF
   ) where
 
-import           Control.Monad.Trans.Class
-import           Control.Monad.Trans.Writer.Strict
+import           Control.Monad.Trans.Writer.Lazy
 import           Data.Functor.Identity
 import           Data.Monoid
--- import           List.Transformer
 
-newtype CorrectedT b m a = CT { unCT :: WriterT b m a }
-  deriving (Show, Functor, Applicative, Monad, MonadTrans, Foldable, Traversable)
-
+-- a scale factor is just a writer monad with the underlying monoid (Reals, *)
+type CorrectedT = WriterT
 type Corrected b = CorrectedT b Identity
 
 correctedT :: m (a, b) -> CorrectedT b m a
-correctedT = CT . WriterT
+correctedT = WriterT
 
 runCorrectedT :: CorrectedT w m a -> m (a, w)
-runCorrectedT = runWriterT . unCT
+runCorrectedT = runWriterT
 
 runCorrected :: Corrected w a -> (a, w)
 runCorrected = runIdentity . runCorrectedT
 
 withCorrection :: Monad m => (a, b) -> CorrectedT b m a
-withCorrection = CT . writer
+withCorrection = writer
 
-inCorrectedT
-  :: (WriterT b1 m1 a1 -> WriterT b m a)
-  -> CorrectedT b1 m1 a1
-  -> CorrectedT b m a
-inCorrectedT f = CT . f . unCT
 
 mapCorrectedT
   :: (m1 (a1, w) -> m (a, b)) -> CorrectedT w m1 a1 -> CorrectedT b m a
-mapCorrectedT f = inCorrectedT $ mapWriterT f
+mapCorrectedT = mapWriterT
 
 type ScaleFactor = Product Double
 type SF = ScaleFactor
-type NoSF = First Double
+type NoSF = ()
 
 -- instance Fractional a => Fractional (Product a) where
 --   recip (Product x) = Product $ recip x
