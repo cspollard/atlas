@@ -4,13 +4,7 @@
 -- A lot of this was inspired by
 -- https://hackage.haskell.org/package/total-map-0.0.6/
 
-module Data.Atlas.Variation
-  -- ( VariationT, Variation, variationT, variation
-  -- , mapVariationT, mapVariation
-  -- , runVariationT, runVariation
-  -- , NominalT, Nominal
-  -- ) where
-  where
+module Data.Atlas.Variation where
 
 import           Control.Applicative
 import           Data.Functor.Classes

@@ -13,7 +13,7 @@ module Data.Atlas.Histogramming
   , hEmpty, hist1DDef, prof1DDef, hist2DDef
   , nH, ptH, etaH, lvHs
   , (<$=), (<$$=), (<$$$=)
-  , withVariations
+  , withVariations, withSFs, withVarsAndSFs
   ) where
 
 import qualified Control.Foldl          as F
@@ -66,27 +66,28 @@ hEmpty b =
   in G.histogramUO b uo v
 
 
-withVariations
-  :: F.Fold (Double, a) b
-  -> F.Fold (Vars (Corrected SF (Maybe a))) (Vars b)
-withVariations (F.Fold comb start done) =
-  F.premap (fmap $ sequence . swap . fmap runSF . runCorrected)
-    $ F.Fold comb' (pure start) (fmap done)
 
-  where
-    -- TODO
-    -- this pattern has come up more than once:
-    -- we have a default value and something to zip,
-    -- replacing any missing in the zip with the default...
-    -- how to generalize?
-    -- in the case of Variations we want the default to change along the way
-    -- in this case we want the default to always be start'
-    -- hmmmmmmmm
-
-    mcomb h = maybe h (comb h)
-    comb' (Variations n m) (Variations n' m') =
-      Variations (mcomb n n') . variations
-        $ mcomb <$> Variations start m <*> Variations Nothing m'
+-- withVariations
+--   :: F.Fold (Double, a) b
+--   -> F.Fold (Vars (Corrected SF (Maybe a))) (Vars b)
+-- withVariations (F.Fold comb start done) =
+--   F.premap (fmap $ sequence . swap . fmap runSF . runCorrected)
+--     $ F.Fold comb' (pure start) (fmap done)
+--
+--   where
+--     -- TODO
+--     -- this pattern has come up more than once:
+--     -- we have a default value and something to zip,
+--     -- replacing any missing in the zip with the default...
+--     -- how to generalize?
+--     -- in the case of Variations we want the default to change along the way
+--     -- in this case we want the default to always be start'
+--     -- hmmmmmmmm
+--
+--     mcomb h = maybe h (comb h)
+--     comb' (Variations n m) (Variations n' m') =
+--       Variations (mcomb n n') . variations
+--         $ mcomb <$> Variations start m <*> Variations Nothing m'
 
 
 hist1DDef
@@ -119,6 +120,43 @@ prof1DDef b xt yt pa =
     . P1DD
     . over bins toArbBin
     <$> F.premap swap (prof1DFill (hEmpty b))
+
+withVariations
+  :: F.Fold a b
+  -> F.Fold (Vars a) (Vars b)
+withVariations (F.Fold comb start done) =
+  F.Fold comb' (pure start) (fmap done)
+
+  where
+    -- TODO
+    -- this pattern has come up more than once:
+    -- we have a default value and something to zip,
+    -- replacing any missing in the zip with the default...
+    -- how to generalize?
+    -- in the case of Variations we want the default to change along the way
+    -- in this case we want the default to always be start
+    -- hmmmmmmmm
+
+    comb' (Variations n m) (Variations n' m') =
+      Variations (comb n n') . variations
+        $ comb <$> Variations start m <*> Variations n' m'
+
+withSFs :: F.Fold (Double, a) b -> F.Fold (Corrected SF a) b
+withSFs = F.premap (swap . fmap runSF . runCorrected)
+
+withVarsAndSFs
+  :: F.Fold (Double, a) b
+  -> F.Fold (Vars (Corrected SF a)) (Vars b)
+withVarsAndSFs = withVariations . withSFs
+
+
+-- TODO
+-- if we could have a Folder of Vars of YodaObjs
+-- then I don't think we would have duplicates of histograms that
+-- aren't sensitive to variations!
+-- if I understand correctly, these duplicates are created
+-- *at the end of the folds*, i.e. when the monoid instance
+-- of Fold kicks in.
 
 
 nH :: Foldable f => Int -> FillSimple (f a)
@@ -165,4 +203,47 @@ f <$$$= g = F.premap (reduce . fmap g) . F.handles folded $ f
     reduce =  fmap join . sequenceA
 
 
--- we need the Maybe since the nominal may fail.
+-- -- TODO
+-- -- just some testing
+-- data Jet =
+--   Jet
+--     { isBTagged :: Corrected (Vars SF) Bool
+--     , jpt       :: Vars Double
+--     , jeta      :: Double
+--     } deriving Show
+--
+-- js :: [Jet]
+-- js =
+--   [ Jet
+--     (withCorrection (True, Variations (sf "hey" 1.2) M.empty))
+--     (Variations 27 [("jes", 29)])
+--     1.5
+--   , Jet
+--     (withCorrection (True, Variations (sf "hey2" 1.3) M.empty))
+--     (Variations 40 [("jes", 45)])
+--     (-0.75)
+--   ]
+--
+-- jetaH :: F.Fold (Double, Jet) YodaFolder
+-- jetaH =
+--   hist1DDef
+--     (binD (-3) 39 3)
+--     "$\\eta$"
+--     (dsigdXpbY "\\eta" "{\\mathrm rad}")
+--     "/eta"
+--     <$= jeta
+--
+--
+-- jptH :: F.Fold (Double, Jet) (Vars YodaFolder)
+-- jptH = F.premap (sequenceA . fmap jpt) $ withVariations h
+--   where
+--     h :: F.Fold (Double, Double) YodaFolder
+--     h =
+--       hist1DDef
+--         (binD 0 50 500)
+--         "$p_{\\mathrm T}$ [GeV]"
+--         (dsigdXpbY pt gev)
+--         "/pt"
+--
+-- jHs :: F.Fold (Double, Jet) (Vars YodaFolder)
+-- jHs = mappend jptH $ F.premap pure (withVariations jetaH)
