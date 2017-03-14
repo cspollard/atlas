@@ -33,15 +33,14 @@ mapCorrectedT
   :: (m1 (a1, w) -> m (a, b)) -> CorrectedT w m1 a1 -> CorrectedT b m a
 mapCorrectedT = mapWriterT
 
--- Dual to give priority to the second (not first) map
-type ScaleFactor = Dual (M.Map T.Text (Product Double))
+type ScaleFactor = M.Map T.Text (Product Double)
 
 type SF = ScaleFactor
 
 runSF :: SF -> Double
-runSF = getProduct . fold . getDual
+runSF = getProduct . fold
 
 sf :: T.Text -> Double -> SF
-sf t = Dual . M.singleton t . Product
+sf t = M.singleton t . Product
 
 type NoSF = ()

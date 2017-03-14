@@ -1,52 +1,61 @@
-{-# LANGUAGE OverloadedLists   #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes        #-}
-{-# LANGUAGE TypeFamilies      #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE OverloadedLists           #-}
+{-# LANGUAGE OverloadedStrings         #-}
+{-# LANGUAGE RankNTypes                #-}
+{-# LANGUAGE ScopedTypeVariables       #-}
+{-# LANGUAGE TypeFamilies              #-}
 
 module Data.Atlas.Histogramming
   ( module X
   , dsigdXpbY
   , mev, gev, rad, pt
-  , Fill, channel, channels
+  , Fill, FillSimple, channel, channels
   , hEmpty, hist1DDef, prof1DDef, hist2DDef
   , nH, ptH, etaH, lvHs
   , (<$=), (<$$=), (<$$$=)
+  , withVariations
   ) where
 
 import qualified Control.Foldl          as F
 import           Control.Lens
 import           Control.Monad          (join)
 import           Data.Atlas.Corrected
+import           Data.Atlas.Variation
 import           Data.HEP.LorentzVector as X
 import           Data.Hist              as X
 import qualified Data.Histogram.Generic as G
 import qualified Data.Map.Strict        as M
 import           Data.Semigroup
-import           Data.Text              (Text)
+import qualified Data.Text              as T
+import           Data.Tuple             (swap)
 import qualified Data.Vector            as V
 import           Data.YODA.Obj          as X
 
 
-dsigdXpbY :: Text -> Text -> Text
+dsigdXpbY :: T.Text -> T.Text -> T.Text
 dsigdXpbY x y =
   "$\\frac{d\\sigma}{d" <> x <> "} \\frac{\\mathrm{pb}}{" <> y <> "}$"
 
-mev, gev, rad, pt :: Text
+mev, gev, rad, pt :: T.Text
 mev = "\\mathrm{MeV}"
 gev = "\\mathrm{GeV}"
 rad = "\\mathrm{rad}"
 pt = "p_{\\mathrm{T}}"
 
 
-type Fill a = F.Fold (Corrected ScaleFactor a) YodaFolder
+type FillSimple a = F.Fold (Double, a) YodaFolder
+type Fill a = F.Fold (Vars (Corrected ScaleFactor (Maybe a))) (Vars YodaFolder)
 
 
-channel :: Text -> (a -> Bool) -> Fill a -> Fill a
+selector :: (a -> Bool) -> Prism' a a
+selector f = prism' id $ \x -> if f x then Just x else Nothing
+
+channel :: T.Text -> (a -> Bool) -> FillSimple a -> FillSimple a
 channel n f fills =
-  M.mapKeysMonotonic (n <>) <$> F.handles (selector (f.fst.runCorrected)) fills
+  M.mapKeysMonotonic (n <>) <$> F.handles (selector (f.snd)) fills
 
 
-channels :: [(Text, a -> Bool)] -> Fill a -> Fill a
+channels :: [(T.Text, a -> Bool)] -> FillSimple a -> FillSimple a
 channels fns fills = mconcat $ uncurry channel <$> fns <*> pure fills
 
 
@@ -57,79 +66,88 @@ hEmpty b =
   in G.histogramUO b uo v
 
 
-toCorrected
-  :: F.Fold (a, Double) r -> F.Fold (Corrected SF a) r
-toCorrected = F.premap (fmap runSF . runCorrected)
+withVariations
+  :: F.Fold (Double, a) b
+  -> F.Fold (Vars (Corrected SF (Maybe a))) (Vars b)
+withVariations (F.Fold comb start done) =
+  F.premap (fmap $ sequence . swap . fmap runSF . runCorrected)
+    $ F.Fold comb' (pure start) (fmap done)
+
+  where
+    -- TODO
+    -- this pattern has come up more than once:
+    -- we have a default value and something to zip,
+    -- replacing any missing in the zip with the default...
+    -- how to generalize?
+    -- in the case of Variations we want the default to change along the way
+    -- in this case we want the default to always be start'
+    -- hmmmmmmmm
+
+    mcomb h = maybe h (comb h)
+    comb' (Variations n m) (Variations n' m') =
+      Variations (mcomb n n') . variations
+        $ mcomb <$> Variations start m <*> Variations Nothing m'
 
 
 hist1DDef
   :: (BinValue b ~ Double, IntervalBin b)
-  => b -> Text -> Text -> Text -> Fill Double
+  => b -> T.Text -> T.Text -> T.Text -> FillSimple Double
 hist1DDef b xt yt pa =
   M.singleton pa
     . Annotated [("XLabel", xt), ("YLabel", yt)]
     . H1DD
     . over bins toArbBin
-    <$> toCorrected (hist1DFill (hEmpty b))
+    <$> F.premap swap (hist1DFill (hEmpty b))
 
 hist2DDef
   :: (BinValue b ~ Double, IntervalBin b)
-  => b -> b -> Text -> Text -> Text -> Fill (Double, Double)
+  => b -> b -> T.Text -> T.Text -> T.Text -> FillSimple (Double, Double)
 hist2DDef bx by xt yt pa =
   M.singleton pa
     . Annotated [("XLabel", xt), ("YLabel", yt)]
     . H2DD
     . over bins (fmapBinX toArbBin)
     . over bins (fmapBinY toArbBin)
-    <$> toCorrected (hist2DFill (hEmpty (Bin2D bx by)))
+    <$> F.premap swap (hist2DFill (hEmpty (Bin2D bx by)))
 
 prof1DDef
   :: (BinValue b ~ Double, IntervalBin b)
-  => b -> Text -> Text -> Text -> Fill (Double, Double)
+  => b -> T.Text -> T.Text -> T.Text -> FillSimple (Double, Double)
 prof1DDef b xt yt pa =
   M.singleton pa
     . Annotated [("XLabel", xt), ("YLabel", yt)]
     . P1DD
     . over bins toArbBin
-    <$> toCorrected (prof1DFill (hEmpty b))
+    <$> F.premap swap (prof1DFill (hEmpty b))
 
 
-nH :: Foldable f => Int -> Fill (f a)
+nH :: Foldable f => Int -> FillSimple (f a)
 nH n =
-  F.premap (fmap $ fromIntegral . length)
-    $ hist1DDef (binD 0 n (fromIntegral n)) "$n$" (dsigdXpbY "n" "1") "/n"
+  hist1DDef (binD 0 n (fromIntegral n)) "$n$" (dsigdXpbY "n" "1") "/n"
+    <$= fromIntegral . length
 
-ptH :: HasLorentzVector a => Fill a
+ptH :: HasLorentzVector a => FillSimple a
 ptH =
-  F.premap (fmap $ view lvPt)
-    $ hist1DDef
-      (binD 0 50 500)
-      "$p_{\\mathrm T}$ [GeV]"
-      (dsigdXpbY pt gev)
-      "/pt"
+  hist1DDef (binD 0 50 500) "$p_{\\mathrm T}$ [GeV]" (dsigdXpbY pt gev) "/pt"
+    <$= view lvPt
 
-etaH :: HasLorentzVector a => Fill a
+etaH :: HasLorentzVector a => FillSimple a
 etaH =
-  F.premap (fmap $ view lvEta)
-    $ hist1DDef
-      (binD (-3) 39 3)
-      "$\\eta$"
-      (dsigdXpbY "\\eta" "{\\mathrm rad}")
-      "/eta"
+  hist1DDef
+    (binD (-3) 39 3)
+    "$\\eta$"
+    (dsigdXpbY "\\eta" "{\\mathrm rad}")
+    "/eta"
+    <$= view lvEta
 
 
 -- generic histograms for a lorentz vector
-lvHs :: HasLorentzVector a => Fill a
+lvHs :: HasLorentzVector a => FillSimple a
 lvHs = mappend <$> ptH <*> etaH
 
-selector :: (a -> Bool) -> Prism' a a
-selector f = prism' id $ \x -> if f x then Just x else Nothing
 
-
--- TODO
--- these don't really build up in the way I imagined they would.
 infixl 2 <$=
-(<$=) :: Functor f => F.Fold (f c) b -> (a -> c) -> F.Fold (f a) b
+(<$=) :: FillSimple b -> (a -> b) -> FillSimple a
 h <$= f = F.premap (fmap f) h
 
 infixl 2 <$$=
@@ -145,3 +163,6 @@ infixl 2 <$$$=
 f <$$$= g = F.premap (reduce . fmap g) . F.handles folded $ f
   where
     reduce =  fmap join . sequenceA
+
+
+-- we need the Maybe since the nominal may fail.
