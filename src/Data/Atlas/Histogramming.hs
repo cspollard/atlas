@@ -14,6 +14,7 @@ module Data.Atlas.Histogramming
   , nH, ptH, etaH, lvHs
   , (<$=), (<$$=), (<$$$=)
   , withVariations, withSFs, withVarsAndSFs, withVariedSFs
+  , premapM'
   ) where
 
 import qualified Control.Foldl          as F
@@ -50,12 +51,21 @@ type Fill a = F.Fold (Vars (Corrected ScaleFactor (Maybe a))) (Vars YodaFolder)
 selector :: (a -> Bool) -> Prism' a a
 selector f = prism' id $ \x -> if f x then Just x else Nothing
 
-channel :: T.Text -> (a -> Bool) -> FillSimple a -> FillSimple a
+channel
+  :: Functor f
+  => T.Text
+  -> (a -> Bool)
+  -> F.Fold a (f (M.Map T.Text b))
+  -> F.Fold a (f (M.Map T.Text b))
 channel n f fills =
-  M.mapKeysMonotonic (n <>) <$> F.handles (selector (f.snd)) fills
+  fmap (M.mapKeysMonotonic (n <>)) <$> F.handles (selector f) fills
 
 
-channels :: [(T.Text, a -> Bool)] -> FillSimple a -> FillSimple a
+channels
+  :: (Functor f, Monoid (f (M.Map T.Text b)))
+  => [(T.Text, a -> Bool)]
+  -> F.Fold a (f (M.Map T.Text b))
+  -> F.Fold a (f (M.Map T.Text b))
 channels fns fills = mconcat $ uncurry channel <$> fns <*> pure fills
 
 
@@ -134,6 +144,9 @@ withVarsAndSFs
   :: F.Fold (Double, a) b
   -> F.Fold (Vars (Corrected SF a)) (Vars b)
 withVarsAndSFs = withVariations . withSFs
+
+premapM' :: Monad m => (a -> m b) -> F.Fold (m b) c -> F.Fold (m a) c
+premapM' g = F.premap (g =<<)
 
 
 -- TODO
