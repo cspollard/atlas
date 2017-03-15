@@ -12,19 +12,19 @@ module Data.Atlas.Histogramming
   , mev, gev, rad, pt
   , channel, channelWithLabel, channelsWithLabels
   , hEmpty, hist1DDef, prof1DDef, hist2DDef
-  , nH, ptH, etaH
+  , nH, ptH, etaH, lvHs
   , (<$=), (<$$=)
-  , inner, outerM
+  , inner, outerM, outer, liftFA, pureFA, bindF
   ) where
 
 import qualified Control.Foldl          as F
 import           Control.Lens
+import           Data.Atlas.Corrected   as X
 import           Data.HEP.LorentzVector as X
 import           Data.Hist              as X
 import qualified Data.Histogram.Generic as G
 import           Data.Semigroup
 import qualified Data.Text              as T
-import           Data.Tuple             (swap)
 import qualified Data.Vector            as V
 import           Data.YODA.Obj          as X
 
@@ -50,14 +50,16 @@ channel :: (a -> Bool) -> Foldl a b -> Foldl a b
 channel f = F.handles $ selector f
 
 channelWithLabel
-  :: T.Text -> (a -> Bool) -> Foldl a (Folder b) -> Foldl a (Folder b)
-channelWithLabel n g = fmap (prefixF n) . channel g
+  :: Functor f
+  => T.Text -> (a -> Bool) -> Foldl a (f (Folder b)) -> Foldl a (f (Folder b))
+channelWithLabel n g = (fmap.fmap) (prefixF n) . channel g
 
 channelsWithLabels
-  :: Semigroup b
-  => [(T.Text, a -> Bool)] -> Foldl a (Folder b) -> Foldl a (Folder b)
+  :: (Functor f, Monoid (f (Folder b)))
+  => [(T.Text, a -> Bool)] -> Foldl a (f (Folder b)) -> Foldl a (f (Folder b))
 channelsWithLabels fns fills =
   mconcat $ uncurry channelWithLabel <$> fns <*> pure fills
+
 
 
 inner :: Monad m => (a -> m b) -> Foldl (m b) c -> Foldl (m a) c
@@ -70,9 +72,22 @@ outerM g (F.Fold comb start done) = F.Fold comb' start' done'
     done' x = done =<< x
     comb' mx ma = flip comb (g =<< ma) <$> mx
 
--- outer :: Applicative m => (a -> m b) -> Foldl b c -> Foldl a (m c)
--- outer g = F.premap g . liftFA
+outer :: Applicative m => (a -> m b) -> Foldl b c -> Foldl a (m c)
+outer g = F.premap g . liftFA
 
+bindF :: Monad m => (a -> m b) -> Foldl b (m c) -> Foldl a (m c)
+bindF g (F.Fold comb start done) = F.Fold comb' start' done'
+  where
+    done' mx = done =<< mx
+    start' = pure start
+    comb' mx a = comb <$> mx <*> g a
+
+liftFA :: Applicative m => Foldl b c -> Foldl (m b) (m c)
+liftFA (F.Fold comb start done) = F.Fold comb' start' done'
+  where
+    start' = pure start
+    comb' xs x = comb <$> xs <*> x
+    done' = fmap done
 
 pureFA :: Applicative m => Foldl b c -> Foldl b (m c)
 pureFA (F.Fold comb start done) = F.Fold comb' start' done'
@@ -89,22 +104,25 @@ hEmpty b =
   in G.histogramUO b uo v
 
 
+withC :: Foldl (a, Double) b -> Foldl (Corrected SF a) b
+withC = F.premap (fmap runSF . runCorrected)
+
 -- TODO
 -- I think it's time to upgrade to FoldMs, but...
 hist1DDef
   :: (BinValue b ~ Double, IntervalBin b)
-  => b -> T.Text -> T.Text -> FoldlA (Double, Double) YodaObj
+  => b -> T.Text -> T.Text -> FoldlA (Corrected SF Double) YodaObj
 hist1DDef b xt yt =
   fmap
     ( Annotated [("XLabel", xt), ("YLabel", yt)]
       . H1DD
       . over bins toArbBin
     )
-  <$> F.premap swap (pureFA $ hist1DFill (hEmpty b))
+  <$> withC (pureFA $ hist1DFill (hEmpty b))
 
 hist2DDef
   :: (BinValue b ~ Double, IntervalBin b)
-  => b -> b -> T.Text -> T.Text -> FoldlA (Double, (Double, Double)) YodaObj
+  => b -> b -> T.Text -> T.Text -> FoldlA (Corrected SF (Double, Double)) YodaObj
 hist2DDef bx by xt yt =
   fmap
     ( Annotated [("XLabel", xt), ("YLabel", yt)]
@@ -112,34 +130,43 @@ hist2DDef bx by xt yt =
       . over bins (fmapBinX toArbBin)
       . over bins (fmapBinY toArbBin)
     )
-  <$> F.premap swap (pureFA $ hist2DFill (hEmpty (Bin2D bx by)))
+  <$> withC (pureFA $ hist2DFill (hEmpty (Bin2D bx by)))
 
 prof1DDef
   :: (BinValue b ~ Double, IntervalBin b)
-  => b -> T.Text -> T.Text -> FoldlA (Double, (Double, Double)) YodaObj
+  => b -> T.Text -> T.Text -> FoldlA (Corrected SF (Double, Double)) YodaObj
 prof1DDef b xt yt =
   fmap
     ( Annotated [("XLabel", xt), ("YLabel", yt)]
       . P1DD
       . over bins toArbBin
     )
-  <$> F.premap swap (pureFA $ prof1DFill (hEmpty b))
+  <$> withC (pureFA $ prof1DFill (hEmpty b))
 
-nH :: Applicative m => Int -> Foldl (Double, Int) (Folder (m YodaObj))
+nH
+  :: (Applicative m, Foldable f)
+  => Int -> Foldl (Corrected SF (f a)) (m (Folder YodaObj))
 nH n =
-  singleton "/n"
+  sequenceA . singleton "/n"
   <$> hist1DDef (binD 0 n (fromIntegral n)) "$n$" (dsigdXpbY "n" "1")
-  <$= fromIntegral
+  <$= fromIntegral . length
 
-ptH :: Applicative m => Foldl (Double, Double) (Folder (m YodaObj))
+ptH :: (HasLorentzVector a, Applicative m) => Foldl (Corrected SF a) (m (Folder YodaObj))
 ptH =
-  singleton "/pt"
+  sequenceA . singleton "/pt"
   <$> hist1DDef (binD 0 50 500) "$p_{\\mathrm T}$ [GeV]" (dsigdXpbY pt gev)
+  <$= view lvPt
 
-etaH :: Applicative m => Foldl (Double, Double) (Folder (m YodaObj))
+etaH :: (HasLorentzVector a, Applicative m) => Foldl (Corrected SF a) (m (Folder YodaObj))
 etaH =
-  singleton "/eta"
+  sequenceA . singleton "/eta"
   <$> hist1DDef (binD (-3) 39 3) "$\\eta$" (dsigdXpbY "\\eta" "{\\mathrm rad}")
+  <$= view lvEta
+
+lvHs
+  :: (HasLorentzVector a, Applicative m, Monoid (m (Folder YodaObj)))
+  => Foldl (Corrected SF a) (m (Folder YodaObj))
+lvHs = ptH `mappend` etaH
 
 
 infixl 2 <$=

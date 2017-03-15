@@ -1,5 +1,7 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric   #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeFamilies    #-}
 
 
 -- A lot of this was inspired by
@@ -8,6 +10,7 @@
 module Data.Atlas.Variation where
 
 import           Control.Applicative
+import           Control.Lens
 import           Data.Functor.Classes
 import qualified Data.Map.Strict      as M
 import           Data.Maybe           (fromMaybe)
@@ -18,12 +21,22 @@ import           GHC.Generics
 
 data Variations k a =
   Variations
-    { nominal    :: a
-    , variations :: M.Map k a
+    { _nominal    :: a
+    , _variations :: M.Map k a
     } deriving (Generic, Show)
+
+makeLenses ''Variations
 
 instance (Ord k, Serialize k, Serialize a) => Serialize (Variations k a)
 
+type instance Index (Variations k a) = k
+type instance IxValue (Variations k a) = a
+
+instance Ord k => Ixed (Variations k a) where
+  ix k = variations.ix k
+
+instance Ord k => At (Variations k a) where
+  at k = variations.at k
 
 instance Ord k => Functor (Variations k) where
   fmap f (Variations n m) = Variations (f n) (fmap f m)
@@ -73,6 +86,12 @@ Variations n m ! k = fromMaybe n (M.lookup k m)
 joinV :: Ord k => Variations k (Variations k v) -> Variations k v
 joinV (Variations (Variations n m) mm) =
   Variations n (M.mapWithKey (flip (!)) mm `M.union` m)
+
+instance Ord k => Foldable (Variations k) where
+  foldMap f (Variations n m) = f n `mappend` foldMap f m
+
+instance Ord k => Traversable (Variations k) where
+  traverse f (Variations n m) = Variations <$> f n <*> traverse f m
 
 type Vars = Variations T.Text
 
