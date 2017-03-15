@@ -23,9 +23,9 @@ import           Text.Regex.Posix.String
 
 import           Data.Atlas.CrossSections
 import           Data.Atlas.ProcessInfo
+import           Data.Atlas.Variation
 import           Data.YODA.Obj
 
-type SystMap = M.Map T.Text
 type ProcMap = IM.IntMap
 
 data InArgs =
@@ -57,7 +57,7 @@ opts :: ParserInfo InArgs
 opts = info (helper <*> inArgs) fullDesc
 
 
-mainWith :: (String -> ProcMap (SystMap YodaFolder) -> IO ()) -> IO ()
+mainWith :: (String -> ProcMap (Vars (Folder YodaObj)) -> IO ()) -> IO ()
 mainWith writeFiles = do
   args <- execParser opts
 
@@ -68,7 +68,7 @@ mainWith writeFiles = do
   let f =
         F.FoldM
           ( \x s ->
-            maybe x (\(k, h) -> IM.insertWith (M.unionWith mergeYF) k h x)
+            maybe x (\(k, h) -> IM.insertWith mappend k h x)
               <$> decodeFile xsecs (lumi args) (regex args) s
           )
           (return IM.empty)
@@ -77,21 +77,22 @@ mainWith writeFiles = do
   procmap <-
     F.impurely L.foldM f (L.select (infiles args) :: L.ListT IO String)
 
-  let procmap' = flip IM.mapWithKey procmap $
-              \ds hs ->
-                  if ds == 0
-                      then
-                        hs
-                          & traverse.traverse.annots.at "LineStyle" ?~ "solid"
-                          & traverse.traverse.annots.at "LineColor" ?~ "Black"
-                          & traverse.traverse.annots.at "DotSize" ?~ "0.15"
-                          & traverse.traverse.annots.at "ErrorBars" ?~ "1"
-                          & traverse.traverse.annots.at "PolyMarker" ?~ "*"
-                          & traverse.traverse.annots.at "Title" ?~ "\"data\""
-                      else
-                        hs
-                          & traverse.traverse.annots.at "Title"
-                            ?~ ("\"" <> processTitle ds <> "\"")
+  let procmap' =
+        flip IM.mapWithKey procmap
+        $ \ds hs ->
+          if ds == 0
+            then
+              hs
+                & traverse.traverse.annots.at "LineStyle" ?~ "solid"
+                & traverse.traverse.annots.at "LineColor" ?~ "Black"
+                & traverse.traverse.annots.at "DotSize" ?~ "0.15"
+                & traverse.traverse.annots.at "ErrorBars" ?~ "1"
+                & traverse.traverse.annots.at "PolyMarker" ?~ "*"
+                & traverse.traverse.annots.at "Title" ?~ "\"data\""
+            else
+              hs
+                & traverse.traverse.annots.at "Title"
+                  ?~ ("\"" <> processTitle ds <> "\"")
 
   writeFiles (outfolder args) procmap'
 
@@ -105,11 +106,11 @@ decodeFile
   -> Double
   -> Maybe String
   -> String
-  -> IO (Maybe (Int, SystMap YodaFolder))
+  -> IO (Maybe (Int, Vars (Folder YodaObj)))
 decodeFile xsecs lu rxp f = do
   putStrLn ("decoding file " ++ f) >> hFlush stdout
   e <- decodeLazy . decompress <$> BS.readFile f ::
-    IO (Either String (Maybe (Int, Double, SystMap YodaFolder)))
+    IO (Either String (Maybe (Int, Double, Vars (Folder YodaObj))))
 
   case e of
     Left _ -> error $ "failed to decode file " ++ f
@@ -129,10 +130,12 @@ decodeFile xsecs lu rxp f = do
                 )
 
   where
-    filt :: YodaFolder -> YodaFolder
+    filt :: Folder YodaObj -> Folder YodaObj
     filt =
       case rxp of
         Nothing -> id
         Just s ->
-          M.filterWithKey
-            $ \k _ -> matchTest (makeRegex s :: Regex) . T.unpack $ k
+          inF
+            ( M.filterWithKey
+              (\k _ -> matchTest (makeRegex s :: Regex) . T.unpack $ k)
+            )

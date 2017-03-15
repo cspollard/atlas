@@ -3,17 +3,13 @@ module Main where
 
 import           Codec.Compression.GZip (compress, decompress)
 import qualified Control.Foldl          as F
+import           Data.Atlas.Variation
 import qualified Data.ByteString.Lazy   as BS
-import qualified Data.Map.Strict        as M
 import           Data.Monoid
 import           Data.Serialize         (decodeLazy, encodeLazy)
-import qualified Data.Text              as T
+import           Data.YODA.Obj
 import qualified List.Transformer       as L
 import           Options.Applicative
-
-import           Data.YODA.Obj
-
-type SystMap = M.Map T.Text
 
 data InArgs =
   InArgs
@@ -56,14 +52,15 @@ main = do
                   else error "attempt to add histograms with different dsids!"
 
               y = sumwgt + sumwgt'
-              z = M.unionWith mergeYF hs hs'
-          in x `seq` y `seq` z `seq` Just (x, y, z)
+              z = mappend hs hs'
+          in z `seq` Just (x, y, z)
 
       toMaybe (Left _)  = Nothing
       toMaybe (Right x) = x
 
 
-decodeFile :: String -> IO (Either String (Maybe (Int, Double, SystMap YodaFolder)))
+decodeFile
+  :: String -> IO (Either String (Maybe (Int, Double, Vars (Folder YodaObj))))
 decodeFile f = do
   putStrLn ("decoding file " ++ f)
   decodeLazy . decompress <$> BS.readFile f
