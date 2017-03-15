@@ -11,6 +11,7 @@ import           Control.Applicative
 import           Data.Functor.Classes
 import qualified Data.Map.Strict      as M
 import           Data.Maybe           (fromMaybe)
+import           Data.Semigroup
 import           Data.Serialize
 import qualified Data.Text            as T
 import           GHC.Generics
@@ -31,6 +32,9 @@ instance Ord k => Functor (Variations k) where
 instance Show k => Show1 (Variations k) where
   liftShowsPrec sp sl d (Variations n m) =
     showsBinaryWith sp (liftShowsPrec sp sl) "Variations" d n m
+
+instance (Ord k, Semigroup a) => Semigroup (Variations k a) where
+  (<>) = liftA2 (<>)
 
 instance (Ord k, Monoid a) => Monoid (Variations k a) where
   mempty = pure mempty
