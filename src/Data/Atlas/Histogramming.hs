@@ -13,7 +13,7 @@ module Data.Atlas.Histogramming
   , hEmpty, hist1DDef, prof1DDef, hist2DDef
   , nH, ptH, etaH, lvHs
   , (<$=), (<$$=), (<$$$=)
-  , withVariations, withSFs, withVarsAndSFs
+  , withVariations, withSFs, withVarsAndSFs, withVariedSFs
   ) where
 
 import qualified Control.Foldl          as F
@@ -64,30 +64,6 @@ hEmpty b =
   let v = V.replicate (nBins b) mempty
       uo = Just (mempty, mempty)
   in G.histogramUO b uo v
-
-
-
--- withVariations
---   :: F.Fold (Double, a) b
---   -> F.Fold (Vars (Corrected SF (Maybe a))) (Vars b)
--- withVariations (F.Fold comb start done) =
---   F.premap (fmap $ sequence . swap . fmap runSF . runCorrected)
---     $ F.Fold comb' (pure start) (fmap done)
---
---   where
---     -- TODO
---     -- this pattern has come up more than once:
---     -- we have a default value and something to zip,
---     -- replacing any missing in the zip with the default...
---     -- how to generalize?
---     -- in the case of Variations we want the default to change along the way
---     -- in this case we want the default to always be start'
---     -- hmmmmmmmm
---
---     mcomb h = maybe h (comb h)
---     comb' (Variations n m) (Variations n' m') =
---       Variations (mcomb n n') . variations
---         $ mcomb <$> Variations start m <*> Variations Nothing m'
 
 
 hist1DDef
@@ -142,7 +118,17 @@ withVariations (F.Fold comb start done) =
         $ comb <$> Variations start m <*> Variations n' m'
 
 withSFs :: F.Fold (Double, a) b -> F.Fold (Corrected SF a) b
-withSFs = F.premap (swap . fmap runSF . runCorrected)
+withSFs = F.premap $ swap . fmap runSF . runCorrected
+
+-- any cuts/changes/etc coming before this point will be imposed
+-- *directly* on the object of type a.
+-- anything after this point will have to treat the as separately
+-- and probably take a performance hit.
+withVariedSFs
+  :: F.Fold (Double, a) b -> F.Fold (Corrected (Vars SF) a) (Vars b)
+withVariedSFs =
+  F.premap (fmap swap . sequence . (fmap.fmap) runSF . runCorrected)
+    . withVariations
 
 withVarsAndSFs
   :: F.Fold (Double, a) b

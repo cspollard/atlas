@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# LANGUAGE DeriveGeneric #-}
 
 
 -- A lot of this was inspired by
@@ -10,13 +11,17 @@ import           Control.Applicative
 import           Data.Functor.Classes
 import qualified Data.Map.Strict      as M
 import           Data.Maybe           (fromMaybe)
+import           Data.Serialize
 import qualified Data.Text            as T
+import           GHC.Generics
 
 data Variations k a =
   Variations
     { nominal    :: a
     , variations :: M.Map k a
-    } deriving Show
+    } deriving (Generic, Show)
+
+instance (Ord k, Serialize k, Serialize a) => Serialize (Variations k a)
 
 
 instance Ord k => Functor (Variations k) where
