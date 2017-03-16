@@ -16,9 +16,9 @@ import           Data.Bifunctor             (second)
 
 -- TODO
 -- will switching the MaybeT and WriterT make things go faster??
-type PhysObj = WriterT (Vars SF) (MaybeT Vars)
+type PhysObj = CorrectedT (Vars SF) (MaybeT Vars)
 
-setWgt :: Monad m => Vars SF -> WriterT (Vars SF) m ()
+setWgt :: Monad m => Vars SF -> CorrectedT (Vars SF) m ()
 setWgt = tell
 
 runPhysObj :: PhysObj a -> Vars (Maybe (a, Double))
