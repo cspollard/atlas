@@ -19,6 +19,16 @@ import           Data.Serialize
 import qualified Data.Text            as T
 import           GHC.Generics
 
+
+-- TODO
+-- note this is extremely dangerous:
+-- if we cut on something, we _cannot_ remove it from the list
+-- we must turn it into a Maybe
+-- e.g.
+-- type Cut a = a -> Maybe a
+-- fmap (cut :: Cut) (v :: Variations k a)
+
+
 data Variations k a =
   Variations
     { _nominal    :: a
@@ -26,6 +36,9 @@ data Variations k a =
     } deriving (Generic, Show)
 
 makeLenses ''Variations
+
+variationsToMap :: Ord k => k -> Variations k a -> M.Map k a
+variationsToMap nomname (Variations nom def) = M.insert nomname nom def
 
 instance (Ord k, Serialize k, Serialize a) => Serialize (Variations k a)
 
