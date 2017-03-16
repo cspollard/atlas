@@ -6,20 +6,23 @@
 {-# LANGUAGE TypeFamilies              #-}
 
 module Data.Atlas.Histogramming
-  ( module X
-  , Foldl, FoldlA
-  , dsigdXpbY
-  , mev, gev, rad, pt
-  , channel, channelWithLabel, channelsWithLabels
-  , hEmpty, hist1DDef, prof1DDef, hist2DDef
-  , nH, ptH, etaH, lvHs
-  , (<$=), (<$$=)
-  , inner, outerM, outer, liftFA, pureFA, bindF
-  ) where
+  -- ( module X
+  -- , Foldl, FoldlA
+  -- , dsigdXpbY
+  -- , mev, gev, rad, pt
+  -- , channel, channelWithLabel, channelsWithLabels
+  -- , hEmpty, hist1DDef, prof1DDef, hist2DDef
+  -- , nH, ptH, etaH, lvHs
+  -- , (<$=), (<$$=)
+  -- , inner, outerM, outer, liftFA, pureFA, bindF
+  -- ) where
+  where
 
 import qualified Control.Foldl          as F
 import           Control.Lens
 import           Data.Atlas.Corrected   as X
+import           Data.Atlas.PhysObj
+import           Data.Atlas.Variation
 import           Data.HEP.LorentzVector as X
 import           Data.Hist              as X
 import qualified Data.Histogram.Generic as G
@@ -30,7 +33,8 @@ import           Data.YODA.Obj          as X
 
 
 type Foldl = F.Fold
-type FoldlA a b = forall f. Applicative f => Foldl a (f b)
+type Fill a = Foldl (PhysObj a) (Vars YodaObj)
+type Fills a = Foldl (PhysObj a) (Folder (Vars YodaObj))
 
 dsigdXpbY :: T.Text -> T.Text -> T.Text
 dsigdXpbY x y =
@@ -103,26 +107,20 @@ hEmpty b =
       uo = Just (mempty, mempty)
   in G.histogramUO b uo v
 
-
-withC :: Foldl (a, Double) b -> Foldl (Corrected SF a) b
-withC = F.premap (fmap runSF . runCorrected)
-
--- TODO
--- I think it's time to upgrade to FoldMs, but...
 hist1DDef
   :: (BinValue b ~ Double, IntervalBin b)
-  => b -> T.Text -> T.Text -> FoldlA (Corrected SF Double) YodaObj
+  => b -> T.Text -> T.Text -> Fill Double
 hist1DDef b xt yt =
   fmap
     ( Annotated [("XLabel", xt), ("YLabel", yt)]
       . H1DD
       . over bins toArbBin
     )
-  <$> withC (pureFA $ hist1DFill (hEmpty b))
+  <$> (outer runPhysObj . F.handles _Just . hist1DFill $ hEmpty b)
 
 hist2DDef
   :: (BinValue b ~ Double, IntervalBin b)
-  => b -> b -> T.Text -> T.Text -> FoldlA (Corrected SF (Double, Double)) YodaObj
+  => b -> b -> T.Text -> T.Text -> Fill (Double, Double)
 hist2DDef bx by xt yt =
   fmap
     ( Annotated [("XLabel", xt), ("YLabel", yt)]
@@ -130,161 +128,44 @@ hist2DDef bx by xt yt =
       . over bins (fmapBinX toArbBin)
       . over bins (fmapBinY toArbBin)
     )
-  <$> withC (pureFA $ hist2DFill (hEmpty (Bin2D bx by)))
+  <$> (outer runPhysObj . F.handles _Just . hist2DFill . hEmpty $ Bin2D bx by)
 
 prof1DDef
   :: (BinValue b ~ Double, IntervalBin b)
-  => b -> T.Text -> T.Text -> FoldlA (Corrected SF (Double, Double)) YodaObj
+  => b -> T.Text -> T.Text -> Fill (Double, Double)
 prof1DDef b xt yt =
   fmap
     ( Annotated [("XLabel", xt), ("YLabel", yt)]
       . P1DD
       . over bins toArbBin
     )
-  <$> withC (pureFA $ prof1DFill (hEmpty b))
+  <$> (outer runPhysObj . F.handles _Just . prof1DFill $ hEmpty b)
 
 nH
-  :: (Applicative m, Foldable f)
-  => Int -> Foldl (Corrected SF (f a)) (m (Folder YodaObj))
+  :: Foldable f
+  => Int -> Fills (f a)
 nH n =
-  sequenceA . singleton "/n"
+  singleton "/n"
   <$> hist1DDef (binD 0 n (fromIntegral n)) "$n$" (dsigdXpbY "n" "1")
   <$= fromIntegral . length
 
-ptH :: (HasLorentzVector a, Applicative m) => Foldl (Corrected SF a) (m (Folder YodaObj))
+ptH :: HasLorentzVector a => Fills a
 ptH =
-  sequenceA . singleton "/pt"
+  singleton "/pt"
   <$> hist1DDef (binD 0 50 500) "$p_{\\mathrm T}$ [GeV]" (dsigdXpbY pt gev)
   <$= view lvPt
 
-etaH :: (HasLorentzVector a, Applicative m) => Foldl (Corrected SF a) (m (Folder YodaObj))
+etaH :: HasLorentzVector a => Fills a
 etaH =
-  sequenceA . singleton "/eta"
+  singleton "/eta"
   <$> hist1DDef (binD (-3) 39 3) "$\\eta$" (dsigdXpbY "\\eta" "{\\mathrm rad}")
   <$= view lvEta
 
 lvHs
-  :: (HasLorentzVector a, Applicative m, Monoid (m (Folder YodaObj)))
-  => Foldl (Corrected SF a) (m (Folder YodaObj))
+  :: HasLorentzVector a => Fills a
 lvHs = ptH `mappend` etaH
 
 
 infixl 2 <$=
 (<$=) :: Functor f => Foldl (f c) b -> (a -> c) -> Foldl (f a) b
 h <$= f = F.premap (fmap f) h
-
-infixl 2 <$$=
-(<$$=) :: (Functor f, Functor g) => Foldl (f (g c)) b -> (a -> c) -> Foldl (f (g a)) b
-h <$$= f = F.premap ((fmap.fmap) f) h
-
-
--- withVariations
---   :: Foldl a b
---   -> Foldl (Vars a) (Vars b)
--- withVariations (Foldl comb start done) =
---   Foldl comb' (pure start) (fmap done)
---
---   where
---     -- TODO
---     -- this pattern has come up more than once:
---     -- we have a default value and something to zip,
---     -- replacing any missing in the zip with the default...
---     -- how to generalize?
---     -- in the case of Variations we want the default to change along the way
---     -- in this case we want the default to always be start
---     -- hmmmmmmmm
---
---     comb' (Variations n m) (Variations n' m') =
---       Variations (comb n n') . variations
---         $ comb <$> Variations start m <*> Variations n' m'
---
--- withSFs :: Foldl (Double, a) b -> Foldl (Corrected SF a) b
--- withSFs = F.premap $ swap . fmap runSF . runCorrected
---
--- -- any cuts/changes/etc coming before this point will be imposed
--- -- *directly* on the object of type a.
--- -- anything after this point will have to treat the as separately
--- -- and probably take a performance hit.
--- withVariedSFs
---   :: Foldl (Double, a) b -> Foldl (Corrected (Vars SF) a) (Vars b)
--- withVariedSFs =
---   F.premap (fmap swap . sequence . (fmap.fmap) runSF . runCorrected)
---     . withVariations
---
--- withVarsAndSFs
---   :: Foldl (Double, a) b
---   -> Foldl (Vars (Corrected SF a)) (Vars b)
--- withVarsAndSFs = withVariations . withSFs
---
---
---
--- -- TODO
--- -- if we could have a Folder of Vars of YodaObjs
--- -- then I don't think we would have duplicates of histograms that
--- -- aren't sensitive to variations!
--- -- if I understand correctly, these duplicates are created
--- -- *at the end of the folds*, i.e. when the monoid instance
--- -- of Fold kicks in.
---
---
---
---
--- infixl 2 <$$=
--- (<$$=)
---   :: (Monad m, Traversable m)
---   => Foldl (m c) b -> (a -> m c) -> Foldl (m a) b
--- h <$$= f = h <$$$= (Identity . f)
---
--- infixl 2 <$$$=
--- (<$$$=)
---   :: (Monad m, Traversable m, Applicative f, Foldable f)
---   => Foldl (m c) b -> (a -> f (m c)) -> Foldl (m a) b
--- f <$$$= g = F.premap (reduce . fmap g) . F.handles folded $ f
---   where
---     reduce =  fmap join . sequenceA
---
---
--- -- -- TODO
--- -- -- just some testing
--- -- data Jet =
--- --   Jet
--- --     { isBTagged :: Corrected (Vars SF) Bool
--- --     , jpt       :: Vars Double
--- --     , jeta      :: Double
--- --     } deriving Show
--- --
--- -- js :: [Jet]
--- -- js =
--- --   [ Jet
--- --     (withCorrection (True, Variations (sf "hey" 1.2) M.empty))
--- --     (Variations 27 [("jes", 29)])
--- --     1.5
--- --   , Jet
--- --     (withCorrection (True, Variations (sf "hey2" 1.3) M.empty))
--- --     (Variations 40 [("jes", 45)])
--- --     (-0.75)
--- --   ]
--- --
--- -- jetaH :: Foldl (Double, Jet) YodaFolder
--- -- jetaH =
--- --   hist1DDef
--- --     (binD (-3) 39 3)
--- --     "$\\eta$"
--- --     (dsigdXpbY "\\eta" "{\\mathrm rad}")
--- --     "/eta"
--- --     <$= jeta
--- --
--- --
--- -- jptH :: Foldl (Double, Jet) (Vars YodaFolder)
--- -- jptH = F.premap (sequenceA . fmap jpt) $ withVariations h
--- --   where
--- --     h :: Foldl (Double, Double) YodaFolder
--- --     h =
--- --       hist1DDef
--- --         (binD 0 50 500)
--- --         "$p_{\\mathrm T}$ [GeV]"
--- --         (dsigdXpbY pt gev)
--- --         "/pt"
--- --
--- -- jHs :: Foldl (Double, Jet) (Vars YodaFolder)
--- -- jHs = mappend jptH $ F.premap pure (withVariations jetaH)
