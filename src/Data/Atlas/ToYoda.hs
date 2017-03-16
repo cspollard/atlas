@@ -57,7 +57,7 @@ opts :: ParserInfo InArgs
 opts = info (helper <*> inArgs) fullDesc
 
 
-mainWith :: (String -> ProcMap (Vars (Folder YodaObj)) -> IO ()) -> IO ()
+mainWith :: (String -> ProcMap (Folder (Vars YodaObj)) -> IO ()) -> IO ()
 mainWith writeFiles = do
   args <- execParser opts
 
@@ -106,18 +106,18 @@ decodeFile
   -> Double
   -> Maybe String
   -> String
-  -> IO (Maybe (Int, Vars (Folder YodaObj)))
+  -> IO (Maybe (Int, Folder (Vars YodaObj)))
 decodeFile xsecs lu rxp f = do
   putStrLn ("decoding file " ++ f) >> hFlush stdout
   e <- decodeLazy . decompress <$> BS.readFile f ::
-    IO (Either String (Maybe (Int, Double, Vars (Folder YodaObj))))
+    IO (Either String (Maybe (Int, Double, Folder (Vars YodaObj))))
 
   case e of
     Left _ -> error $ "failed to decode file " ++ f
 
     Right Nothing -> return Nothing
     Right (Just (dsid, sumwgt, hs)) -> do
-      let hs' = filt <$> hs
+      let hs' = filt hs
       return
         $ if processTitle dsid == "other"
           then Nothing
@@ -130,7 +130,7 @@ decodeFile xsecs lu rxp f = do
                 )
 
   where
-    filt :: Folder YodaObj -> Folder YodaObj
+    filt :: Folder a -> Folder a
     filt =
       case rxp of
         Nothing -> id

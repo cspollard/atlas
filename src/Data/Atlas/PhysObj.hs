@@ -15,6 +15,9 @@ import           Data.Bifunctor             (second)
 -- when we run the whole thing, these Vars are combined.
 type PhysObj = WriterT (Vars SF) (MaybeT Vars)
 
+setWgt :: Monad m => Vars SF -> WriterT (Vars SF) m ()
+setWgt = tell
+
 runPhysObj :: PhysObj a -> Vars (Maybe (a, Double))
 runPhysObj =
   join

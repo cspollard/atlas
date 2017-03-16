@@ -23,6 +23,7 @@ library
                      , Data.Atlas.Variation
                      , Data.Atlas.Corrected
                      , Data.Atlas.PhysObj
+                     , Data.Atlas.ToYoda
 
 
   other-modules:
