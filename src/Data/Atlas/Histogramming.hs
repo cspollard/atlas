@@ -6,30 +6,31 @@
 {-# LANGUAGE TypeFamilies              #-}
 
 module Data.Atlas.Histogramming
-  -- ( module X
-  -- , Foldl, FoldlA
-  -- , dsigdXpbY
-  -- , mev, gev, rad, pt
-  -- , channel, channelWithLabel, channelsWithLabels
-  -- , hEmpty, hist1DDef, prof1DDef, hist2DDef
-  -- , nH, ptH, etaH, lvHs
-  -- , (<$=), (<$$=)
+  ( module X
+  , Fill, Fills
+  , dsigdXpbY
+  , mev, gev, rad, pt
+  , channel, channelWithLabel, channelsWithLabels
+  , hEmpty, hist1DDef, prof1DDef, hist2DDef
+  , nH, ptH, etaH, lvHs
+  , (<$=)
+  ) where
   -- , inner, outerM, outer, liftFA, pureFA, bindF
   -- ) where
-  where
 
-import qualified Control.Foldl          as F
+import qualified Control.Foldl             as F
 import           Control.Lens
-import           Data.Atlas.Corrected   as X
-import           Data.Atlas.PhysObj
-import           Data.Atlas.Variation
-import           Data.HEP.LorentzVector as X
-import           Data.Hist              as X
-import qualified Data.Histogram.Generic as G
+import           Control.Monad.Trans.Class (lift)
+import           Data.Atlas.Corrected      as X
+import           Data.Atlas.PhysObj        as X
+import           Data.Atlas.Variation      as X
+import           Data.HEP.LorentzVector    as X
+import           Data.Hist                 as X
+import qualified Data.Histogram.Generic    as G
 import           Data.Semigroup
-import qualified Data.Text              as T
-import qualified Data.Vector            as V
-import           Data.YODA.Obj          as X
+import qualified Data.Text                 as T
+import qualified Data.Vector               as V
+import           Data.YODA.Obj             as X
 
 
 type Foldl = F.Fold
@@ -50,17 +51,18 @@ pt = "p_{\\mathrm{T}}"
 selector :: (a -> Bool) -> Prism' a a
 selector f = prism' id $ \x -> if f x then Just x else Nothing
 
-channel :: (a -> Bool) -> Foldl a b -> Foldl a b
-channel f = F.handles $ selector f
+cut :: (a -> PhysObj Bool) -> PhysObj a -> PhysObj a
+cut c o = do
+  p <- c =<< o
+  if p then o else lift (fail "fail cut")
 
-channelWithLabel
-  :: Functor f
-  => T.Text -> (a -> Bool) -> Foldl a (f (Folder b)) -> Foldl a (f (Folder b))
-channelWithLabel n g = (fmap.fmap) (prefixF n) . channel g
+channel :: (a -> PhysObj Bool) -> Fills a -> Fills a
+channel f = F.premap (cut f)
 
-channelsWithLabels
-  :: (Functor f, Monoid (f (Folder b)))
-  => [(T.Text, a -> Bool)] -> Foldl a (f (Folder b)) -> Foldl a (f (Folder b))
+channelWithLabel :: T.Text -> (a -> PhysObj Bool) -> Fills a -> Fills a
+channelWithLabel n f = fmap (prefixF n) . channel f
+
+channelsWithLabels :: [(T.Text, a -> PhysObj Bool)] -> Fills a -> Fills a
 channelsWithLabels fns fills =
   mconcat $ uncurry channelWithLabel <$> fns <*> pure fills
 
