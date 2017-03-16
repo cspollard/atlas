@@ -22,7 +22,7 @@ library
                      , Data.Atlas.ProcessInfo
                      , Data.Atlas.Variation
                      , Data.Atlas.Corrected
-                     , Data.Atlas.ToYoda
+                     , Data.Atlas.PhysObj
 
 
   other-modules:
