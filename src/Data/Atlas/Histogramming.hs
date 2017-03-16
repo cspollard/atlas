@@ -72,37 +72,6 @@ channelsWithLabels fns fills =
 inner :: Monad m => (a -> m b) -> Foldl (m b) c -> Foldl (m a) c
 inner g = F.premap (g =<<)
 
-outerM :: Monad m => (a -> m b) -> Foldl (m b) (m c) -> Foldl (m a) (m c)
-outerM g (F.Fold comb start done) = F.Fold comb' start' done'
-  where
-    start' = return start
-    done' x = done =<< x
-    comb' mx ma = flip comb (g =<< ma) <$> mx
-
-outer :: Applicative m => (a -> m b) -> Foldl b c -> Foldl a (m c)
-outer g = F.premap g . liftFA
-
-bindF :: Monad m => (a -> m b) -> Foldl b (m c) -> Foldl a (m c)
-bindF g (F.Fold comb start done) = F.Fold comb' start' done'
-  where
-    done' mx = done =<< mx
-    start' = pure start
-    comb' mx a = comb <$> mx <*> g a
-
-liftFA :: Applicative m => Foldl b c -> Foldl (m b) (m c)
-liftFA (F.Fold comb start done) = F.Fold comb' start' done'
-  where
-    start' = pure start
-    comb' xs x = comb <$> xs <*> x
-    done' = fmap done
-
-pureFA :: Applicative m => Foldl b c -> Foldl b (m c)
-pureFA (F.Fold comb start done) = F.Fold comb' start' done'
-  where
-    start' = pure start
-    comb' xs x = comb <$> xs <*> pure x
-    done' = fmap done
-
 
 hEmpty :: (Bin bin, Monoid a) => bin -> Histogram V.Vector bin a
 hEmpty b =
@@ -172,3 +141,34 @@ lvHs = ptH `mappend` etaH
 infixl 2 <$=
 (<$=) :: Functor f => Foldl (f c) b -> (a -> c) -> Foldl (f a) b
 h <$= f = F.premap (fmap f) h
+
+outerM :: Monad m => (a -> m b) -> Foldl (m b) (m c) -> Foldl (m a) (m c)
+outerM g (F.Fold comb start done) = F.Fold comb' start' done'
+  where
+    start' = return start
+    done' x = done =<< x
+    comb' mx ma = flip comb (g =<< ma) <$> mx
+
+outer :: Applicative m => (a -> m b) -> Foldl b c -> Foldl a (m c)
+outer g = F.premap g . liftFA
+
+bindF :: Monad m => (a -> m b) -> Foldl b (m c) -> Foldl a (m c)
+bindF g (F.Fold comb start done) = F.Fold comb' start' done'
+  where
+    done' mx = done =<< mx
+    start' = pure start
+    comb' mx a = comb <$> mx <*> g a
+
+liftFA :: Applicative m => Foldl b c -> Foldl (m b) (m c)
+liftFA (F.Fold comb start done) = F.Fold comb' start' done'
+  where
+    start' = pure start
+    comb' xs x = comb <$> xs <*> x
+    done' = fmap done
+
+pureFA :: Applicative m => Foldl b c -> Foldl b (m c)
+pureFA (F.Fold comb start done) = F.Fold comb' start' done'
+  where
+    start' = pure start
+    comb' xs x = comb <$> xs <*> pure x
+    done' = fmap done
