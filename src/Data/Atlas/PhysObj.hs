@@ -13,6 +13,9 @@ import           Data.Bifunctor             (second)
 -- we have variations on the weights of the object
 -- as well as variations on the object iself
 -- when we run the whole thing, these Vars are combined.
+
+-- TODO
+-- will switching the MaybeT and WriterT make things go faster??
 type PhysObj = WriterT (Vars SF) (MaybeT Vars)
 
 setWgt :: Monad m => Vars SF -> WriterT (Vars SF) m ()
