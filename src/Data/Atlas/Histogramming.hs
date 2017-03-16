@@ -110,6 +110,14 @@ hEmpty b =
       uo = Just (mempty, mempty)
   in G.histogramUO b uo v
 
+-- TODO
+-- I think this would work better with CPS
+-- basically: I take a Cont (Double, Double) (Double, Doubl)
+-- you can transform teh 2nd set of Doubles all you want,
+-- as long as you deliver what I need
+-- however, how do pass an Event to a Histo1D and a Prof1D
+-- in the same "pipe"?
+
 hist1DDef
   :: (BinValue b ~ Double, IntervalBin b)
   => b -> T.Text -> T.Text -> Fill Double
