@@ -1,14 +1,14 @@
 module Data.Atlas.Corrected
   ( CorrectedT, withCorrection, runCorrectedT, runCorrected
   , mapCorrectedT, Corrected, correctedT
-  , ScaleFactor, SF, NoSF, runSF, sf
+  , ScaleFactor, SF, runSF, sf
   ) where
 
 import           Control.Monad.Trans.Writer.Lazy
 import           Data.Foldable                   (fold)
 import           Data.Functor.Identity
 import qualified Data.Map                        as M
-import           Data.Monoid
+import           Data.Monoid                     hiding ((<>))
 import qualified Data.Text                       as T
 
 -- a scale factor is just a writer monad with the underlying monoid of
@@ -42,5 +42,3 @@ runSF = getProduct . fold
 
 sf :: T.Text -> Double -> SF
 sf t = M.singleton t . Product
-
-type NoSF = ()
