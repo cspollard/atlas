@@ -16,6 +16,13 @@ import           Data.Bifunctor             (second)
 
 -- TODO
 -- will switching the MaybeT and WriterT make things go faster??
+-- the issue, I believe, is one of sharing.
+-- currently, we only "force" the SFs to be calculated at the last second:
+-- even after we've spread them out through the Vars dictionary...
+-- we need a way to "force" the SFs without running MaybeT Vars...
+-- the problem is that in all the monad transformers, the state/log/etc
+-- live *inside* the underlying monad...
+-- can we try just a tuple?!
 type PhysObj = CorrectedT (Vars SF) (MaybeT Vars)
 
 setWgt :: Monad m => Vars SF -> CorrectedT (Vars SF) m ()
