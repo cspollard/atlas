@@ -2,12 +2,12 @@
 
 module Data.Atlas.PhysObj where
 
-import           Control.Monad                     (join)
+import           Control.Monad              (join)
 import           Control.Monad.Trans.Maybe
-import           Control.Monad.Trans.Writer.Strict
+import           Control.Monad.Trans.Writer
 import           Data.Atlas.Corrected
 import           Data.Atlas.Variation
-import           Data.Bifunctor                    (second)
+import           Data.Bifunctor             (second)
 
 -- an MC object:
 -- we have variations on the weights of the object
