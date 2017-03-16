@@ -31,8 +31,8 @@ import           GHC.Generics
 
 data Variations k a =
   Variations
-    { _nominal    :: a
-    , _variations :: M.Map k a
+    { _nominal    :: !a
+    , _variations :: !(M.Map k a)
     } deriving (Generic, Show)
 
 makeLenses ''Variations

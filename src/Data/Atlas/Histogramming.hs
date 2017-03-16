@@ -13,6 +13,7 @@ module Data.Atlas.Histogramming
   , channel, channelWithLabel, channelsWithLabels
   , hEmpty, hist1DDef, prof1DDef, hist2DDef
   , nH, ptH, etaH, lvHs
+  , bindF
   , (<$=)
   ) where
   -- , inner, outerM, outer, liftFA, pureFA, bindF
