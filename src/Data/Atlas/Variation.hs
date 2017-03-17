@@ -20,15 +20,6 @@ import qualified Data.Text            as T
 import           GHC.Generics
 
 
--- TODO
--- note this is extremely dangerous:
--- if we cut on something, we _cannot_ remove it from the list
--- we must turn it into a Maybe
--- e.g.
--- type Cut a = a -> Maybe a
--- fmap (cut :: Cut) (v :: Variations k a)
-
-
 data Variations k a =
   Variations
     { _nominal    :: !a
@@ -47,12 +38,15 @@ type instance IxValue (Variations k a) = a
 
 instance Ord k => Ixed (Variations k a) where
   ix k = variations.ix k
+  {-# INLINABLE ix #-}
 
 instance Ord k => At (Variations k a) where
   at k = variations.at k
+  {-# INLINABLE at #-}
 
 instance Ord k => Functor (Variations k) where
   fmap f (Variations n m) = Variations (f n) (fmap f m)
+  {-# INLINABLE fmap #-}
 
 
 instance Show k => Show1 (Variations k) where
@@ -61,15 +55,18 @@ instance Show k => Show1 (Variations k) where
 
 instance (Ord k, Semigroup a) => Semigroup (Variations k a) where
   (<>) = liftA2 (<>)
+  {-# INLINABLE (<>) #-}
 
 instance (Ord k, Monoid a) => Monoid (Variations k a) where
   mempty = pure mempty
   mappend = liftA2 mappend
+  {-# INLINABLE mempty #-}
+  {-# INLINABLE mappend #-}
 
 
 
 instance Ord k => Applicative (Variations k) where
-  pure x = Variations x M.empty
+  pure = flip Variations M.empty
   -- if the same variation appears in both maps
   -- then we apply the function to the corresponding value
   -- otherwise "fill in" with the nominal value
@@ -83,13 +80,18 @@ instance Ord k => Applicative (Variations k) where
         fs
         xs
       )
+  {-# INLINABLE pure #-}
+  {-# INLINABLE (<*>) #-}
 
 instance Ord k => Monad (Variations k) where
   return = pure
   m >>= f = joinV (f <$> m)
+  {-# INLINABLE return #-}
+  {-# INLINABLE (>>=) #-}
 
 (!) :: Ord k => Variations k a -> k -> a
-Variations n m ! k = fromMaybe n (M.lookup k m)
+(!) (Variations n m) = fromMaybe n . flip M.lookup m
+{-# INLINABLE (!) #-}
 
 -- how we join variations:
 -- nominal -> nominal
@@ -99,12 +101,15 @@ Variations n m ! k = fromMaybe n (M.lookup k m)
 joinV :: Ord k => Variations k (Variations k v) -> Variations k v
 joinV (Variations (Variations n m) mm) =
   Variations n (M.mapWithKey (flip (!)) mm `M.union` m)
+{-# INLINABLE joinV #-}
 
 instance Ord k => Foldable (Variations k) where
   foldMap f (Variations n m) = f n `mappend` foldMap f m
+{-# INLINABLE foldMap #-}
 
 instance Ord k => Traversable (Variations k) where
   traverse f (Variations n m) = Variations <$> f n <*> traverse f m
+{-# INLINABLE traverse #-}
 
 type Vars = Variations T.Text
 

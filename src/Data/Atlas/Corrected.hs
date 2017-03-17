@@ -8,7 +8,7 @@ import           Control.Monad.Trans.Writer.Lazy
 import           Data.Foldable                   (fold)
 import           Data.Functor.Identity
 import qualified Data.Map                        as M
-import           Data.Monoid                     hiding ((<>))
+import           Data.Monoid
 import qualified Data.Text                       as T
 
 -- a scale factor is just a writer monad with the underlying monoid of
@@ -33,12 +33,25 @@ mapCorrectedT
   :: (m1 (a1, w) -> m (a, b)) -> CorrectedT w m1 a1 -> CorrectedT b m a
 mapCorrectedT = mapWriterT
 
-type ScaleFactor = M.Map T.Text (Product Double)
+data ScaleFactor a = SF a (M.Map T.Text a) deriving (Show)
 
-type SF = ScaleFactor
+instance Monoid a => Monoid (ScaleFactor a) where
+  mempty = SF mempty mempty
+  SF x mx `mappend` SF _ my =
+    let dxy = my `M.difference` mx
+        mx' = dxy `M.union` mx
+        x' = x <> fold dxy
+    in SF x' mx'
+  {-# INLINABLE mempty #-}
+  {-# INLINABLE mappend #-}
+
+
+type SF = ScaleFactor (Product Double)
 
 runSF :: SF -> Double
-runSF = getProduct . fold
+runSF (SF x _) = getProduct x
+{-# INLINABLE runSF #-}
 
 sf :: T.Text -> Double -> SF
-sf t = M.singleton t . Product
+sf t x = let x' = Product x in SF x' $ M.singleton t x'
+{-# INLINABLE sf #-}

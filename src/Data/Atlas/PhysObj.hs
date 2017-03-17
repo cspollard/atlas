@@ -2,23 +2,20 @@
 
 module Data.Atlas.PhysObj where
 
-import           Control.Monad             (join)
-import           Control.Monad.Trans.Cont
 import           Control.Monad.Trans.Maybe
 import           Data.Atlas.Corrected
 import           Data.Atlas.Variation
-import           Data.Bifunctor            (second)
 
 -- an MC object:
 -- we have variations on the weights of the object
 -- as well as variations on the object iself
--- when we run the whole thing, these Vars are combined.
+-- these variations must be combined *by the function using them*
+-- otherwise we run into severe performance issues
+type PhysObj = CorrectedT (Vars SF) (MaybeT Vars)
 
-type PhysObj r = ContT r (MaybeT (CorrectedT (Vars SF) Vars))
+setWgt :: Monad m => Vars SF -> CorrectedT (Vars SF) m ()
+setWgt = tell
 
--- runPhysObj :: (a -> MaybePhysObj r a -> Vars (Maybe (a, Double))
-runPhysObj
-  :: PhysObj a a
-  -- -> (a -> (MaybeT (CorrectedT (Vars SF) Vars)) r)
-  -> (MaybeT (CorrectedT (Vars SF) Vars)) a
-runPhysObj p = runContT p pure
+runPhysObj :: PhysObj a -> Vars (Maybe (a, Vars SF))
+runPhysObj = runMaybeT . runWriterT
+{-# INLINABLE runPhysObj #-}
