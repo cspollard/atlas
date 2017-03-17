@@ -101,12 +101,15 @@ instance Ord k => Monad (Variations k) where
 joinV :: Ord k => Variations k (Variations k v) -> Variations k v
 joinV (Variations (Variations n m) mm) =
   Variations n (M.mapWithKey (flip (!)) mm `M.union` m)
+{-# INLINABLE joinV #-}
 
 instance Ord k => Foldable (Variations k) where
   foldMap f (Variations n m) = f n `mappend` foldMap f m
+{-# INLINABLE foldMap #-}
 
 instance Ord k => Traversable (Variations k) where
   traverse f (Variations n m) = Variations <$> f n <*> traverse f m
+{-# INLINABLE traverse #-}
 
 type Vars = Variations T.Text
 
