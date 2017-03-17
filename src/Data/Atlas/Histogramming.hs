@@ -49,9 +49,6 @@ rad = "\\mathrm{rad}"
 pt = "p_{\\mathrm{T}}"
 
 
-selector :: (a -> Bool) -> Prism' a a
-selector f = prism' id $ \x -> if f x then Just x else Nothing
-
 cut :: (a -> PhysObj Bool) -> PhysObj a -> PhysObj a
 cut c o = do
   p <- c =<< o
@@ -96,13 +93,6 @@ liftFA (F.Fold comb start done) = F.Fold comb' start' done'
     comb' xs x = comb <$> xs <*> x
     done' = fmap done
 
-pureFA :: Applicative m => Foldl b c -> Foldl b (m c)
-pureFA (F.Fold comb start done) = F.Fold comb' start' done'
-  where
-    start' = pure start
-    comb' xs x = comb <$> xs <*> pure x
-    done' = fmap done
-
 
 hEmpty :: (Bin bin, Monoid a) => bin -> Histogram V.Vector bin a
 hEmpty b =
@@ -118,6 +108,14 @@ hEmpty b =
 -- however, how do pass an Event to a Histo1D and a Prof1D
 -- in the same "pipe"?
 
+pohelper :: Foldl (a, Double) c -> Foldl (PhysObj a) (Variations T.Text c)
+pohelper =
+  bindF runPhysObj
+  . F.handles _Just
+  . F.premap sequenceA
+  . liftFA
+  . F.premap (fmap runSF)
+
 hist1DDef
   :: (BinValue b ~ Double, IntervalBin b)
   => b -> T.Text -> T.Text -> Fill Double
@@ -127,7 +125,7 @@ hist1DDef b xt yt =
       . H1DD
       . over bins toArbBin
     )
-  <$> (outer runPhysObj . F.handles _Just . hist1DFill $ hEmpty b)
+  <$> (pohelper . hist1DFill $ hEmpty b)
 
 hist2DDef
   :: (BinValue b ~ Double, IntervalBin b)
@@ -139,7 +137,7 @@ hist2DDef bx by xt yt =
       . over bins (fmapBinX toArbBin)
       . over bins (fmapBinY toArbBin)
     )
-  <$> (outer runPhysObj . F.handles _Just . hist2DFill . hEmpty $ Bin2D bx by)
+  <$> (pohelper .  hist2DFill . hEmpty $ Bin2D bx by)
 
 prof1DDef
   :: (BinValue b ~ Double, IntervalBin b)
@@ -150,7 +148,7 @@ prof1DDef b xt yt =
       . P1DD
       . over bins toArbBin
     )
-  <$> (outer runPhysObj . F.handles _Just . prof1DFill $ hEmpty b)
+  <$> (pohelper . prof1DFill $ hEmpty b)
 
 nH
   :: Foldable f

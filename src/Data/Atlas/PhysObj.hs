@@ -2,12 +2,10 @@
 
 module Data.Atlas.PhysObj where
 
-import           Control.Monad              (join)
 import           Control.Monad.Trans.Maybe
 import           Control.Monad.Trans.Writer
 import           Data.Atlas.Corrected
 import           Data.Atlas.Variation
-import           Data.Bifunctor             (second)
 
 -- an MC object:
 -- we have variations on the weights of the object
@@ -28,14 +26,13 @@ type PhysObj = CorrectedT (Vars SF) (MaybeT Vars)
 setWgt :: Monad m => Vars SF -> CorrectedT (Vars SF) m ()
 setWgt = tell
 
-runPhysObj :: PhysObj a -> Vars (Maybe (a, Double))
+runPhysObj :: PhysObj a -> Vars (Maybe (a, Vars SF))
 runPhysObj =
-  join
-  -- Vars (Maybe (Vars (a, Double))
-  . fmap (sequenceA . fmap sequenceA)
-  -- Vars (Maybe (a, Vars Double))
-  . runMaybeT
-  -- MaybeT Vars (a, Vars Double)
+  -- join
+  -- -- Vars (Vars (Maybe (a, Double)))
+  -- . fmap (sequenceA . fmap (sequenceA . (fmap.fmap) runSF))
+  -- -- Vars (Maybe (a, Vars SF))
+  runMaybeT
+  -- MaybeT Vars (a, Vars SF)
   . runWriterT
-  -- WriterT (Vars Double) (MaybeT Vars) a
-  . mapWriterT (fmap (second (fmap runSF)))
+{-# INLINABLE runPhysObj #-}
