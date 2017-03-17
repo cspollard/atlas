@@ -60,7 +60,7 @@ main = do
 
 
 decodeFile
-  :: String -> IO (Either String (Maybe (Int, Double, Vars (Folder YodaObj))))
+  :: String -> IO (Either String (Maybe (Int, Double, Folder (Vars YodaObj))))
 decodeFile f = do
   putStrLn ("decoding file " ++ f)
   decodeLazy . decompress <$> BS.readFile f

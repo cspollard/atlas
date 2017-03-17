@@ -7,6 +7,7 @@ import           Control.Monad.Trans.Writer
 import           Data.Atlas.Corrected
 import           Data.Atlas.Variation
 
+
 -- an MC object:
 -- we have variations on the weights of the object
 -- as well as variations on the object iself
