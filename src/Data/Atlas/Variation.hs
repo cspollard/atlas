@@ -105,11 +105,11 @@ joinV (Variations (Variations n m) mm) =
 
 instance Ord k => Foldable (Variations k) where
   foldMap f (Variations n m) = f n `mappend` foldMap f m
-{-# INLINABLE foldMap #-}
+  {-# INLINABLE foldMap #-}
 
 instance Ord k => Traversable (Variations k) where
   traverse f (Variations n m) = Variations <$> f n <*> traverse f m
-{-# INLINABLE traverse #-}
+  {-# INLINABLE traverse #-}
 
 type Vars = Variations T.Text
 

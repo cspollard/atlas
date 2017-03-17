@@ -93,7 +93,6 @@ liftFA (F.Fold comb start done) = F.Fold comb' start' done'
     comb' xs x = comb <$> xs <*> x
     done' = fmap done
 
-
 hEmpty :: (Bin bin, Monoid a) => bin -> Histogram V.Vector bin a
 hEmpty b =
   let v = V.replicate (nBins b) mempty

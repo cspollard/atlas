@@ -3,6 +3,7 @@
 module Data.Atlas.PhysObj where
 
 import           Control.Monad.Trans.Maybe
+import           Control.Monad.Trans.Writer
 import           Data.Atlas.Corrected
 import           Data.Atlas.Variation
 
@@ -15,6 +16,7 @@ type PhysObj = CorrectedT (Vars SF) (MaybeT Vars)
 
 setWgt :: Monad m => Vars SF -> CorrectedT (Vars SF) m ()
 setWgt = tell
+{-# INLINABLE setWgt #-}
 
 runPhysObj :: PhysObj a -> Vars (Maybe (a, Vars SF))
 runPhysObj = runMaybeT . runWriterT
