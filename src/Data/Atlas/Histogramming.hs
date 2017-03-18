@@ -13,11 +13,9 @@ module Data.Atlas.Histogramming
   , channel, channelWithLabel, channelsWithLabels
   , hEmpty, hist1DDef, prof1DDef, hist2DDef
   , nH, ptH, etaH, lvHs
-  , bindF
+  , bindF, innerF
   , (<$=)
   ) where
-  -- , inner, outerM, outer, liftFA, pureFA, bindF
-  -- ) where
 
 import qualified Control.Foldl             as F
 import           Control.Lens
@@ -66,8 +64,8 @@ channelsWithLabels fns fills =
 
 
 
-inner :: Monad m => (a -> m b) -> Foldl (m b) c -> Foldl (m a) c
-inner g = F.premap (g =<<)
+innerF :: Monad m => (a -> m b) -> Foldl (m b) c -> Foldl (m a) c
+innerF g = F.premap (g =<<)
 
 outerM :: Monad m => (a -> m b) -> Foldl (m b) (m c) -> Foldl (m a) (m c)
 outerM g (F.Fold comb start done) = F.Fold comb' start' done'

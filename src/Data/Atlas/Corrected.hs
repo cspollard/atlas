@@ -33,7 +33,6 @@ mapCorrectedT
   :: (m1 (a1, w) -> m (a, b)) -> CorrectedT w m1 a1 -> CorrectedT b m a
 mapCorrectedT = mapWriterT
 
-
 -- TODO
 -- provide an automatic unique identifier for different systematics?
 -- I think this involves adding a StateT Int to my monad stack
