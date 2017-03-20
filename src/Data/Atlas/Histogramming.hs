@@ -99,7 +99,7 @@ hEmpty b =
 
 -- TODO
 -- I think this would work better with CPS
--- basically: I take a Cont (Double, Double) (Double, Doubl)
+-- basically: I take a Cont (Double, Double) (Double, Double)
 -- you can transform teh 2nd set of Doubles all you want,
 -- as long as you deliver what I need
 -- however, how do pass an Event to a Histo1D and a Prof1D
