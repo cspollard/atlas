@@ -1,10 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Data.Atlas.ProcessInfo where
-
-import Data.Text (Text)
-
-import Data.Monoid ((<>))
+import           Data.Monoid ((<>))
+import           Data.Text   (Text)
 
 btwn :: Int -> Int -> Int -> Bool
 btwn mn mx x = mn <= x && x <= mx

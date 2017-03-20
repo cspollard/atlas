@@ -28,6 +28,11 @@ import           Data.YODA.Obj
 
 type ProcMap = IM.IntMap
 
+scaleH :: Double -> Obj -> Obj
+scaleH x (H1DD h) = H1DD $ scaling x h
+scaleH x (P1DD h) = P1DD $ scaling x h
+scaleH x (H2DD h) = H2DD $ scaling x h
+
 data InArgs =
   InArgs
     { outfolder :: String
@@ -57,7 +62,8 @@ opts :: ParserInfo InArgs
 opts = info (helper <*> inArgs) fullDesc
 
 
-mainWith :: (String -> ProcMap (Folder (Vars YodaObj)) -> IO ()) -> IO ()
+mainWith
+  :: (Double -> String -> ProcMap (Folder (Vars YodaObj)) -> IO ()) -> IO ()
 mainWith writeFiles = do
   args <- execParser opts
 
@@ -65,17 +71,7 @@ mainWith writeFiles = do
     fromMaybe (error "failed to parse xsec file.")
       <$> (fmap.fmap.fmap) fst (readXSecFile (xsecfile args))
 
-  let f =
-        F.FoldM
-          ( \x s ->
-            maybe x (\(k, h) -> IM.insertWith mappend k h x)
-              <$> decodeFile xsecs (lumi args) (regex args) s
-          )
-          (return IM.empty)
-          return
-
-  procmap <-
-    F.impurely L.foldM f (L.select (infiles args) :: L.ListT IO String)
+  procmap <- decodeFiles xsecs (regex args) (L.select $ infiles args)
 
   let procmap' =
         flip IM.mapWithKey procmap
@@ -94,20 +90,35 @@ mainWith writeFiles = do
                 & traverse.traverse.annots.at "Title"
                   ?~ ("\"" <> processTitle ds <> "\"")
 
-  writeFiles (outfolder args) procmap'
+  writeFiles (lumi args) (outfolder args) procmap'
 
 
 dsidOTHER :: Int
 dsidOTHER = 999999
 
+decodeFiles
+  :: IM.IntMap Double
+  -> Maybe String
+  -> L.ListT IO String
+  -> IO (IM.IntMap (Folder (Vars YodaObj)))
+decodeFiles xss rx infs =
+  let f =
+        F.FoldM
+          ( \x s ->
+            maybe x (\(k, h) -> IM.insertWith mappend k h x)
+              <$> decodeFile xss rx s
+          )
+          (return IM.empty)
+          return
+
+    in F.impurely L.foldM f infs
 
 decodeFile
   :: IM.IntMap Double
-  -> Double
   -> Maybe String
   -> String
   -> IO (Maybe (Int, Folder (Vars YodaObj)))
-decodeFile xsecs lu rxp f = do
+decodeFile xsecs rxp f = do
   putStrLn ("decoding file " ++ f) >> hFlush stdout
   e <- decodeLazy . decompress <$> BS.readFile f ::
     IO (Either String (Maybe (Int, Double, Folder (Vars YodaObj))))
@@ -123,10 +134,13 @@ decodeFile xsecs lu rxp f = do
           then Nothing
           else Just $
             if dsid == 0
-              then (0, over (traverse.noted._H1DD) (scaling $ 1.0/lu) <$> hs')
+              then (0, hs')
               else
                 ( dsid
-                , hs' <&> over (traverse.noted._H1DD) (scaling $ xsecs IM.! dsid/sumwgt)
+                , hs'
+                  & over
+                    (traverse.traverse.noted)
+                    (scaleH $ xsecs IM.! dsid/sumwgt)
                 )
 
   where
