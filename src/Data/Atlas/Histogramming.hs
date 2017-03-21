@@ -6,8 +6,7 @@
 {-# LANGUAGE TypeFamilies              #-}
 
 module Data.Atlas.Histogramming
-  ( module X
-  , Fill, Fills
+  ( Fill, Fills
   , dsigdXpbY
   , mev, gev, rad, pt
   , channel, channelWithLabel, channelsWithLabels
@@ -20,16 +19,16 @@ module Data.Atlas.Histogramming
 import qualified Control.Foldl             as F
 import           Control.Lens
 import           Control.Monad.Trans.Class (lift)
-import           Data.Atlas.Corrected      as X
-import           Data.Atlas.PhysObj        as X
-import           Data.Atlas.Variation      as X
-import           Data.HEP.LorentzVector    as X
-import           Data.Hist                 as X
+import           Data.Atlas.Corrected
+import           Data.Atlas.PhysObj
+import           Data.Atlas.Variation
+import           Data.HEP.LorentzVector
+import           Data.Hist
 import qualified Data.Histogram.Generic    as G
 import           Data.Semigroup
 import qualified Data.Text                 as T
 import qualified Data.Vector               as V
-import           Data.YODA.Obj             as X
+import           Data.YODA.Obj
 
 
 type Foldl = F.Fold

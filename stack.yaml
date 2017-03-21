@@ -4,6 +4,7 @@ packages:
 - '.'
 - ../hhep.git/
 - ../histogram-extras.git/
+- ../variation.git/
 extra-deps:
 - cereal-text-0.1.0.2
 - histogram-fill-cereal-0.6.2.0
