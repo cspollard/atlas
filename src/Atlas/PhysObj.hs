@@ -2,11 +2,11 @@
 
 module Atlas.PhysObj where
 
+import           Atlas.Corrected
+import           Atlas.Variation
 import           Control.Monad.Trans.Class
 import           Control.Monad.Trans.Maybe
 import           Control.Monad.Trans.Writer
-import           Atlas.Corrected
-import           Atlas.Variation
 
 
 -- an MC object:
@@ -18,10 +18,11 @@ type PhysObj = CorrectedT (Vars SF) (MaybeT Vars)
 
 onlyObjVars :: Vars a -> PhysObj a
 onlyObjVars = lift.lift
+{-# INLINABLE onlyObjVars #-}
 
-setWgt :: Monad m => Vars SF -> CorrectedT (Vars SF) m ()
-setWgt = tell
-{-# INLINABLE setWgt #-}
+onlySFVars :: Monad m => Vars SF -> a -> CorrectedT (Vars SF) m a
+onlySFVars sfs x = tell sfs >> return x
+{-# INLINABLE onlySFVars #-}
 
 runPhysObj :: PhysObj a -> Vars (Maybe (a, Vars SF))
 runPhysObj = runMaybeT . runWriterT
