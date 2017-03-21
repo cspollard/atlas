@@ -1,4 +1,4 @@
-module Data.Atlas.Variation
+module Atlas.Variation
   ( module X
   , Vars
   ) where

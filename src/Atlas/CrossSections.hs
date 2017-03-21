@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Data.Atlas.CrossSections where
+module Atlas.CrossSections where
 
 import Control.Applicative
 import qualified Data.ByteString as BS

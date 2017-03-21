@@ -3,7 +3,7 @@ module Main where
 
 import           Codec.Compression.GZip (compress, decompress)
 import qualified Control.Foldl          as F
-import           Data.Atlas.Variation
+import           Atlas.Variation
 import qualified Data.ByteString.Lazy   as BS
 import           Data.Monoid
 import           Data.Serialize         (decodeLazy, encodeLazy)

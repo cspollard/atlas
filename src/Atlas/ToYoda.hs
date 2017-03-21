@@ -3,7 +3,7 @@
 {-# LANGUAGE RankNTypes        #-}
 {-# LANGUAGE TupleSections     #-}
 
-module Data.Atlas.ToYoda where
+module Atlas.ToYoda where
 
 import           Codec.Compression.GZip    (decompress)
 import qualified Control.Foldl             as F
@@ -21,9 +21,9 @@ import           System.IO                 (hFlush, stdout)
 import           Text.Regex.Base.RegexLike
 import           Text.Regex.Posix.String
 
-import           Data.Atlas.CrossSections
-import           Data.Atlas.ProcessInfo
-import           Data.Atlas.Variation
+import           Atlas.CrossSections
+import           Atlas.ProcessInfo
+import           Atlas.Variation
 import           Data.YODA.Obj
 
 type ProcMap = IM.IntMap

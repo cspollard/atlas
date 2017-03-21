@@ -1,6 +1,6 @@
 {-# LANGUAGE TypeFamilies #-}
 
-module Data.Atlas.DataMC where
+module Atlas.DataMC where
 
 import Control.Lens
 

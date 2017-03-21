@@ -16,15 +16,15 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 library
-  exposed-modules:     Data.Atlas.CrossSections
-                     , Data.Atlas.DataMC
-                     , Data.Atlas.Histogramming
-                     , Data.Atlas.ProcessInfo
-                     , Data.Atlas.Variation
-                     , Data.Atlas.Corrected
-                     , Data.Atlas.PhysObj
-                     , Data.Atlas.ToYoda
-                     , Data.Atlas
+  exposed-modules:     Atlas.CrossSections
+                     , Atlas.DataMC
+                     , Atlas.Histogramming
+                     , Atlas.ProcessInfo
+                     , Atlas.Variation
+                     , Atlas.Corrected
+                     , Atlas.PhysObj
+                     , Atlas.ToYoda
+                     , Atlas
 
 
   other-modules:

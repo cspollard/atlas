@@ -1,12 +1,12 @@
 {-# LANGUAGE TupleSections #-}
 
-module Data.Atlas.PhysObj where
+module Atlas.PhysObj where
 
 import           Control.Monad.Trans.Class
 import           Control.Monad.Trans.Maybe
 import           Control.Monad.Trans.Writer
-import           Data.Atlas.Corrected
-import           Data.Atlas.Variation
+import           Atlas.Corrected
+import           Atlas.Variation
 
 
 -- an MC object:

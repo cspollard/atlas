@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Data.Atlas.ProcessInfo where
+module Atlas.ProcessInfo where
 import           Data.Monoid ((<>))
 import           Data.Text   (Text)
 

@@ -1,4 +1,4 @@
-module Data.Atlas.Corrected
+module Atlas.Corrected
   ( CorrectedT, withCorrection, runCorrectedT, runCorrected
   , mapCorrectedT, Corrected, correctedT
   , ScaleFactor, SF, runSF, sf

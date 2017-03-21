@@ -5,7 +5,7 @@
 {-# LANGUAGE ScopedTypeVariables       #-}
 {-# LANGUAGE TypeFamilies              #-}
 
-module Data.Atlas.Histogramming
+module Atlas.Histogramming
   ( Fill, Fills
   , dsigdXpbY
   , mev, gev, rad, pt
@@ -19,9 +19,9 @@ module Data.Atlas.Histogramming
 import qualified Control.Foldl             as F
 import           Control.Lens
 import           Control.Monad.Trans.Class (lift)
-import           Data.Atlas.Corrected
-import           Data.Atlas.PhysObj
-import           Data.Atlas.Variation
+import           Atlas.Corrected
+import           Atlas.PhysObj
+import           Atlas.Variation
 import           Data.HEP.LorentzVector
 import           Data.Hist
 import qualified Data.Histogram.Generic    as G
