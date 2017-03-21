@@ -16,18 +16,19 @@ module Atlas.Histogramming
   , (<$=)
   ) where
 
-import qualified Control.Foldl             as F
-import           Control.Lens
-import           Control.Monad.Trans.Class (lift)
 import           Atlas.Corrected
 import           Atlas.PhysObj
 import           Atlas.Variation
+import qualified Control.Foldl                as F
+import           Control.Lens
+import           Control.Monad.Trans.Class    (lift)
 import           Data.HEP.LorentzVector
 import           Data.Hist
-import qualified Data.Histogram.Generic    as G
+import           Data.Histogram.Bin.Transform
+import qualified Data.Histogram.Generic       as G
 import           Data.Semigroup
-import qualified Data.Text                 as T
-import qualified Data.Vector               as V
+import qualified Data.Text                    as T
+import qualified Data.Vector                  as V
 import           Data.YODA.Obj
 
 
@@ -157,7 +158,10 @@ nH n =
 ptH :: HasLorentzVector a => Fills a
 ptH =
   singleton "/pt"
-  <$> hist1DDef (binD 0 50 500) "$p_{\\mathrm T}$ [GeV]" (dsigdXpbY pt gev)
+  <$> hist1DDef
+      (logBinD 20 25 500) -- :: TransformedBin BinD (Log10BT Double))
+      "$p_{\\mathrm T}$ [GeV]"
+      (dsigdXpbY pt gev)
   <$= view lvPt
 
 etaH :: HasLorentzVector a => Fills a
