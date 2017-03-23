@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE OverloadedLists           #-}
 {-# LANGUAGE OverloadedStrings         #-}
@@ -14,22 +15,25 @@ module Atlas.Histogramming
   , nH, ptH, etaH, lvHs
   , bindF, innerF
   , (<$=)
+  , filterFolder
   ) where
 
 import           Atlas.Corrected
 import           Atlas.PhysObj
 import           Atlas.Variation
-import qualified Control.Foldl                as F
+import qualified Control.Foldl             as F
 import           Control.Lens
-import           Control.Monad.Trans.Class    (lift)
+import           Control.Monad.Trans.Class (lift)
 import           Data.HEP.LorentzVector
 import           Data.Hist
-import           Data.Histogram.Bin.Transform
-import qualified Data.Histogram.Generic       as G
+import qualified Data.Histogram.Generic    as G
+import qualified Data.Map.Strict           as M
 import           Data.Semigroup
-import qualified Data.Text                    as T
-import qualified Data.Vector                  as V
+import qualified Data.Text                 as T
+import qualified Data.Vector               as V
 import           Data.YODA.Obj
+import           Text.Regex.Base.RegexLike
+import           Text.Regex.Posix.String
 
 
 type Foldl = F.Fold
@@ -178,3 +182,11 @@ lvHs = ptH `mappend` etaH
 infixl 2 <$=
 (<$=) :: Functor f => Foldl (f c) b -> (a -> c) -> Foldl (f a) b
 h <$= f = F.premap (fmap f) h
+
+filterFolder :: Maybe String -> Folder a -> Folder a
+filterFolder s f = maybe f (`g` f) s
+  where
+    g s' =
+      let rxp = makeRegex s' :: Regex
+          h k _ = matchTest rxp $ T.unpack k
+      in inF (M.filterWithKey h)

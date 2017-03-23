@@ -5,26 +5,20 @@
 
 module Atlas.ToYoda where
 
-import           Codec.Compression.GZip    (decompress)
-import qualified Control.Foldl             as F
-import           Control.Lens
-import qualified Data.ByteString.Lazy      as BS
-import qualified Data.IntMap.Strict        as IM
-import qualified Data.Map.Strict           as M
-import           Data.Maybe                (fromMaybe)
-import           Data.Monoid
-import           Data.Serialize            (decodeLazy)
-import qualified Data.Text                 as T
-import qualified List.Transformer          as L
-import           Options.Applicative
-import           System.IO                 (hFlush, stdout)
-import           Text.Regex.Base.RegexLike
-import           Text.Regex.Posix.String
-
+import           Atlas
 import           Atlas.CrossSections
 import           Atlas.ProcessInfo
-import           Atlas.Variation
-import           Data.YODA.Obj
+import           Codec.Compression.GZip (decompress)
+import qualified Control.Foldl          as F
+import           Control.Lens
+import qualified Data.ByteString.Lazy   as BS
+import qualified Data.IntMap.Strict     as IM
+import           Data.Maybe             (fromMaybe)
+import           Data.Monoid
+import           Data.Serialize         (decodeLazy)
+import qualified List.Transformer       as L
+import           Options.Applicative
+import           System.IO              (hFlush, stdout)
 
 type ProcMap = IM.IntMap
 
@@ -128,7 +122,7 @@ decodeFile xsecs rxp f = do
 
     Right Nothing -> return Nothing
     Right (Just (dsid, sumwgt, hs)) -> do
-      let hs' = filt hs
+      let hs' = filterFolder rxp hs
       return
         $ if processTitle dsid == "other"
           then Nothing
@@ -142,14 +136,3 @@ decodeFile xsecs rxp f = do
                     (traverse.traverse.noted)
                     (scaleH $ xsecs IM.! dsid/sumwgt)
                 )
-
-  where
-    filt :: Folder a -> Folder a
-    filt =
-      case rxp of
-        Nothing -> id
-        Just s ->
-          inF
-            ( M.filterWithKey
-              (\k _ -> matchTest (makeRegex s :: Regex) . T.unpack $ k)
-            )

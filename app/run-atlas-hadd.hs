@@ -1,14 +1,14 @@
 
 module Main where
 
-import           Atlas.Variation
+import           Atlas
 import           Codec.Compression.GZip (compress, decompress)
 import           Control.DeepSeq
 import qualified Control.Foldl          as F
+import           Control.Lens
 import qualified Data.ByteString.Lazy   as BS
 import           Data.Monoid
 import           Data.Serialize         (decodeLazy, encodeLazy)
-import           Data.YODA.Obj
 import qualified List.Transformer       as L
 import           Options.Applicative
 import           System.IO
@@ -16,17 +16,18 @@ import           System.IO
 data InArgs =
   InArgs
     { outfile :: String
+    , regex   :: Maybe String
     , infiles :: [String]
     }
 
 inArgs :: Parser InArgs
 inArgs =
   InArgs
-    <$> strOption
-      ( long "outfile"
-      <> short 'o'
-      <> metavar "OUTFILE" )
-    <*> some (strArgument (metavar "INFILES"))
+  <$> strOption
+    ( long "outfile" <> short 'o' <> metavar "OUTFILE" )
+  <*> optional
+    ( strOption (long "regex" <> metavar "REGEX=\".*\"") )
+  <*> some (strArgument (metavar "INFILES"))
 
 main :: IO ()
 main = do
@@ -34,7 +35,7 @@ main = do
   args <- execParser $ info (helper <*> inArgs) fullDesc
   let f =
         F.FoldM
-          (\x s -> merge x . toMaybe <$> decodeFile s)
+          (\x s -> merge x . toMaybe <$> decodeFile (regex args) s)
           (return Nothing)
           return
 
@@ -63,8 +64,12 @@ main = do
 
 
 decodeFile
-  :: String -> IO (Either String (Maybe (Int, Double, Folder (Vars YodaObj))))
-decodeFile f = do
+  :: Maybe String -> String -> IO (Either String (Maybe (Int, Double, Folder (Vars YodaObj))))
+decodeFile rxp f = do
   putStrLn ("decoding file " ++ f)
   -- make sure we actually read the entire structure in.
-  force . decodeLazy . decompress <$> BS.readFile f
+  force
+    . (fmap.fmap) (over _3 $ filterFolder rxp)
+    . decodeLazy
+    . decompress
+    <$> BS.readFile f
