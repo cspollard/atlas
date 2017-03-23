@@ -67,6 +67,7 @@ executable run-atlas-hadd
                      , cereal == 0.5.*
                      , zlib == 0.6.*
                      , optparse-applicative == 0.13.*
+                     , deepseq == 1.4.*
                      , histogram-extras == 0.2.*
                      , atlas == 0.1.*
 

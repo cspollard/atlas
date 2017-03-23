@@ -1,9 +1,10 @@
 
 module Main where
 
-import           Codec.Compression.GZip (compress, decompress)
-import qualified Control.Foldl          as F
 import           Atlas.Variation
+import           Codec.Compression.GZip (compress, decompress)
+import           Control.DeepSeq
+import qualified Control.Foldl          as F
 import qualified Data.ByteString.Lazy   as BS
 import           Data.Monoid
 import           Data.Serialize         (decodeLazy, encodeLazy)
@@ -63,4 +64,5 @@ decodeFile
   :: String -> IO (Either String (Maybe (Int, Double, Folder (Vars YodaObj))))
 decodeFile f = do
   putStrLn ("decoding file " ++ f)
-  decodeLazy . decompress <$> BS.readFile f
+  -- make sure we actually read the entire structure in.
+  force . decodeLazy . decompress <$> BS.readFile f
