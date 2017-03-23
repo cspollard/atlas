@@ -11,6 +11,7 @@ import           Data.Serialize         (decodeLazy, encodeLazy)
 import           Data.YODA.Obj
 import qualified List.Transformer       as L
 import           Options.Applicative
+import           System.IO
 
 data InArgs =
   InArgs
@@ -29,6 +30,7 @@ inArgs =
 
 main :: IO ()
 main = do
+  hSetBuffering stdout LineBuffering
   args <- execParser $ info (helper <*> inArgs) fullDesc
   let f =
         F.FoldM
@@ -54,7 +56,7 @@ main = do
 
               y = sumwgt + sumwgt'
               z = mappend hs hs'
-          in z `seq` Just (x, y, z)
+          in z `deepseq` Just (x, y, z)
 
       toMaybe (Left _)  = Nothing
       toMaybe (Right x) = x
