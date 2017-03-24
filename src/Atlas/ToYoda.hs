@@ -15,7 +15,8 @@ import qualified Data.ByteString.Lazy   as BS
 import qualified Data.IntMap.Strict     as IM
 import qualified Data.Map.Strict        as M
 import           Data.Maybe             (fromMaybe)
-import           Data.Monoid
+import           Data.Monoid            hiding ((<>))
+import           Data.Semigroup         ((<>))
 import           Data.Serialize
 import qualified Data.Text              as T
 import           Options.Applicative
@@ -79,9 +80,11 @@ mainWith writeFiles = do
   let f = decodeFile xsecs . fromMaybe "*" $ regex args
   procmap <- P.foldM (\x fn -> IM.union x <$> f fn) (return IM.empty) return (P.each $ infiles args)
 
+  -- TODO
+  -- so much traverse.....
   let procmap' =
         flip IM.mapWithKey procmap
-        $ \ds hs ->
+        $ \ds (Sum w, hs) ->
           if ds == 0
             then
               hs
@@ -92,9 +95,13 @@ mainWith writeFiles = do
                 & traverse.traverse.annots.at "PolyMarker" ?~ "*"
                 & traverse.traverse.annots.at "Title" ?~ "\"data\""
             else
-              hs
-                & traverse.traverse.annots.at "Title"
-                  ?~ ("\"" <> processTitle ds <> "\"")
+              let t = ("\"" <> processTitle ds <> "\"")
+              in hs
+                  & over
+                    (traverse.traverse)
+                    ( over noted (scaleH (xsecs IM.! ds / w))
+                      . set (annots.at "Title") (Just t)
+                    )
 
   writeFiles (lumi args) (outfolder args) procmap'
 
@@ -106,7 +113,7 @@ decodeFile
   :: IM.IntMap Double
   -> String
   -> String
-  -> IO (IM.IntMap (Folder (Vars YodaObj)))
+  -> IO (IM.IntMap (Sum Double, Folder (Vars YodaObj)))
 decodeFile xsecs rxp f = do
   putStrLn ("decoding file " ++ f) >> hFlush stdout
 
@@ -127,13 +134,15 @@ decodeFile xsecs rxp f = do
               if i == 0
                 then y
                 else over noted (scaleH $ (xsecs IM.! i)/d) y
-        in (First (Just i), M.singleton t $ M.singleton t' y')
+        in (First (Just i), (Sum d, M.singleton t $ M.singleton t' y'))
 
-  P.fold (liftA2 $ M.unionWith M.union) (First Nothing, M.empty)
-    (\(ds, fol) ->
+  P.fold (liftA2 . liftA2 . M.unionWith $ M.unionWith (<>))
+    (First Nothing, (mempty, mempty))
+    (\(ds, (w, fol)) ->
       case ds of
-        First Nothing -> error "no objects were loaded...?"
-        First (Just i) -> IM.singleton i $ Folder $ variationFromMap "nominal" <$> fol
+        First Nothing -> IM.empty
+        First (Just i) ->
+          IM.singleton i (w, Folder $ variationFromMap "nominal" <$> fol)
     )
     $ P.map prep
       <-< P.filter filt
