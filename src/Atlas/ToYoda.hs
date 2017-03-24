@@ -1,7 +1,8 @@
-{-# LANGUAGE FlexibleContexts  #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes        #-}
-{-# LANGUAGE TupleSections     #-}
+{-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE RankNTypes          #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections       #-}
 
 module Atlas.ToYoda where
 
@@ -9,15 +10,19 @@ import           Atlas
 import           Atlas.CrossSections
 import           Atlas.ProcessInfo
 import           Codec.Compression.GZip (decompress)
-import qualified Control.Foldl          as F
 import           Control.Lens
 import qualified Data.ByteString.Lazy   as BS
 import qualified Data.IntMap.Strict     as IM
+import qualified Data.Map.Strict        as M
 import           Data.Maybe             (fromMaybe)
 import           Data.Monoid
-import           Data.Serialize         (decodeLazy)
-import qualified List.Transformer       as L
+import           Data.Serialize
+import qualified Data.Text              as T
 import           Options.Applicative
+import           Pipes                  ((<-<))
+import qualified Pipes                  as P
+import qualified Pipes.ByteString       as PBS
+import qualified Pipes.Prelude          as P
 import           System.IO              (hFlush, stdout)
 
 type ProcMap = IM.IntMap
@@ -55,6 +60,12 @@ inArgs = InArgs
 opts :: ParserInfo InArgs
 opts = info (helper <*> inArgs) fullDesc
 
+-- TODO
+-- partial!
+variationFromMap :: Ord k => k -> M.Map k a -> Variations k a
+variationFromMap k m =
+  let n = m M.! k
+  in Variations n $ sans k m
 
 mainWith
   :: (Double -> String -> ProcMap (Folder (Vars YodaObj)) -> IO ()) -> IO ()
@@ -65,7 +76,8 @@ mainWith writeFiles = do
     fromMaybe (error "failed to parse xsec file.")
       <$> (fmap.fmap.fmap) fst (readXSecFile (xsecfile args))
 
-  procmap <- decodeFiles xsecs (regex args) (L.select $ infiles args)
+  let f = decodeFile xsecs . fromMaybe "*" $ regex args
+  procmap <- P.foldM (\x fn -> IM.union x <$> f fn) (return IM.empty) return (P.each $ infiles args)
 
   let procmap' =
         flip IM.mapWithKey procmap
@@ -90,49 +102,56 @@ mainWith writeFiles = do
 dsidOTHER :: Int
 dsidOTHER = 999999
 
-decodeFiles
-  :: IM.IntMap Double
-  -> Maybe String
-  -> L.ListT IO String
-  -> IO (IM.IntMap (Folder (Vars YodaObj)))
-decodeFiles xss rx infs =
-  let f =
-        F.FoldM
-          ( \x s ->
-            maybe x (\(k, h) -> IM.insertWith mappend k h x)
-              <$> decodeFile xss rx s
-          )
-          (return IM.empty)
-          return
-
-    in F.impurely L.foldM f infs
-
 decodeFile
   :: IM.IntMap Double
-  -> Maybe String
   -> String
-  -> IO (Maybe (Int, Folder (Vars YodaObj)))
+  -> String
+  -> IO (IM.IntMap (Folder (Vars YodaObj)))
 decodeFile xsecs rxp f = do
   putStrLn ("decoding file " ++ f) >> hFlush stdout
-  e <- decodeLazy . decompress <$> BS.readFile f ::
-    IO (Either String (Maybe (Int, Double, Folder (Vars YodaObj))))
 
-  case e of
-    Left _ -> error $ "failed to decode file " ++ f
+  bs <- decompress <$> BS.readFile f
 
-    Right Nothing -> return Nothing
-    Right (Just (dsid, sumwgt, hs)) -> do
-      let hs' = filterFolder rxp hs
-      return
-        $ if processTitle dsid == "other"
-          then Nothing
-          else Just $
-            if dsid == 0
-              then (0, hs')
-              else
-                ( dsid
-                , hs'
-                  & over
-                    (traverse.traverse.noted)
-                    (scaleH $ xsecs IM.! dsid/sumwgt)
-                )
+  -- pipes outline:
+  -- 1) deserialize into items of type (Text, (Text, (Int, Double, YodaObj)))
+  -- 2) cull out those that fail rxp matching
+  -- 3) return obj of type Folder (Vars (Int, Double, YodaObj))), which can be
+  --      zipped into Folder (Vars YodaObj).
+
+  let filt ((i, _), (t, _)) =
+        matchRegex rxp (T.unpack t)
+        && processTitle i /= "other"
+
+      prep ((i, d), (t, (t', y))) =
+        let y' =
+              if i == 0
+                then y
+                else over noted (scaleH $ (xsecs IM.! i)/d) y
+        in (First (Just i), M.singleton t $ M.singleton t' y')
+
+  P.fold (liftA2 $ M.unionWith M.union) (First Nothing, M.empty)
+    (\(ds, fol) ->
+      case ds of
+        First Nothing -> error "no objects were loaded...?"
+        First (Just i) -> IM.singleton i $ Folder $ variationFromMap "nominal" <$> fol
+    )
+    $ P.map prep
+      <-< P.filter filt
+      <-< deserializer
+      <-< PBS.fromLazy bs
+
+-- | De-serialize data from strict 'ByteString's.  Uses @cereal@'s
+-- incremental 'Data.Serialize.Get' parser.
+deserializer :: (Serialize a, Monad m) => P.Pipe PBS.ByteString a m ()
+deserializer = loop Nothing Nothing
+  where
+    loop mk mbin = do
+        bin <- maybe P.await return mbin
+        case fromMaybe (runGetPartial get) mk bin of
+          Fail reason _leftover ->
+              fail reason
+          Partial k ->
+              loop (Just k) Nothing
+          Done c bin' -> do
+              P.yield c
+              loop Nothing (Just bin')

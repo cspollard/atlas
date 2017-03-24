@@ -15,7 +15,7 @@ module Atlas.Histogramming
   , nH, ptH, etaH, lvHs
   , bindF, innerF
   , (<$=)
-  , filterFolder
+  , filterFolder, matchRegex
   ) where
 
 import           Atlas.Corrected
@@ -182,6 +182,9 @@ lvHs = ptH `mappend` etaH
 infixl 2 <$=
 (<$=) :: Functor f => Foldl (f c) b -> (a -> c) -> Foldl (f a) b
 h <$= f = F.premap (fmap f) h
+
+matchRegex :: String -> String -> Bool
+matchRegex rxp = matchTest (makeRegex rxp :: Regex)
 
 filterFolder :: Maybe String -> Folder a -> Folder a
 filterFolder s f = maybe f (`g` f) s
