@@ -138,11 +138,7 @@ decodeFile xsecs rxp f = do
         && processTitle i /= "other"
 
       prep ((i, d), (t, (t', y))) =
-        let y' =
-              if i == 0
-                then y
-                else over noted (scaleH $ (xsecs IM.! i)/d) y
-        in (First (Just i), (Sum d, M.singleton t $ M.singleton t' y'))
+        (First (Just i), (Sum d, M.singleton t $ M.singleton t' y))
 
   P.fold (liftA2 . liftA2 . M.unionWith $ M.unionWith (<>))
     (First Nothing, (mempty, mempty))
