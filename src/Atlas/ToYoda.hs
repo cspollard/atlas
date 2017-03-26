@@ -33,6 +33,9 @@ scaleH x (H1DD h) = H1DD $ scaling x h
 scaleH x (P1DD h) = P1DD $ scaling x h
 scaleH x (H2DD h) = H2DD $ scaling x h
 
+seqT :: (t, t1) -> (t, t1)
+seqT (a, b) = a `seq` b `seq` (a, b)
+
 data InArgs =
   InArgs
     { outfolder :: String
@@ -80,7 +83,7 @@ mainWith writeFiles = do
   let f = decodeFile xsecs . fromMaybe "*" $ regex args
   procmap <-
     P.foldM
-      (\x fn -> IM.unionWith mappend x <$> f fn)
+      (\x fn -> IM.unionWith (\y -> seqT . mappend y) x <$> f fn)
       (return IM.empty)
       return
       (P.each $ infiles args)
