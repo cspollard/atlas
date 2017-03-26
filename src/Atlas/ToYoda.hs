@@ -78,7 +78,12 @@ mainWith writeFiles = do
       <$> (fmap.fmap.fmap) fst (readXSecFile (xsecfile args))
 
   let f = decodeFile xsecs . fromMaybe "*" $ regex args
-  procmap <- P.foldM (\x fn -> IM.union x <$> f fn) (return IM.empty) return (P.each $ infiles args)
+  procmap <-
+    P.foldM
+      (\x fn -> IM.unionWith mappend x <$> f fn)
+      (return IM.empty)
+      return
+      (P.each $ infiles args)
 
   -- TODO
   -- so much traverse.....
