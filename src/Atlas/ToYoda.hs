@@ -14,7 +14,7 @@ import           Control.Lens
 import qualified Data.ByteString.Lazy   as BS
 import qualified Data.IntMap.Strict     as IM
 import qualified Data.Map.Strict        as M
-import           Data.Maybe             (fromMaybe)
+import           Data.Maybe             (fromMaybe, fromJust)
 import           Data.Monoid            hiding ((<>))
 import           Data.Semigroup         ((<>))
 import           Data.Serialize
@@ -80,7 +80,7 @@ mainWith writeFiles = do
     fromMaybe (error "failed to parse xsec file.")
       <$> (fmap.fmap.fmap) fst (readXSecFile (xsecfile args))
 
-  let f = decodeFile xsecs . fromMaybe "*" $ regex args
+  let f = decodeFile . fromMaybe "*" $ regex args
   procmap <-
     P.foldM
       (\x fn -> IM.unionWith (\y -> seqT . mappend y) x <$> f fn)
@@ -118,11 +118,10 @@ dsidOTHER :: Int
 dsidOTHER = 999999
 
 decodeFile
-  :: IM.IntMap Double
-  -> String
+  :: String
   -> String
   -> IO (IM.IntMap (Sum Double, Folder (Vars YodaObj)))
-decodeFile xsecs rxp f = do
+decodeFile rxp f = do
   putStrLn ("decoding file " ++ f) >> hFlush stdout
 
   bs <- decompress <$> BS.readFile f
@@ -138,15 +137,20 @@ decodeFile xsecs rxp f = do
         && processTitle i /= "other"
 
       prep ((i, d), (t, (t', y))) =
-        (First (Just i), (Sum d, M.singleton t $ M.singleton t' y))
+        (First (Just i), (First (Just d), M.singleton t $ M.singleton t' y))
 
-  P.fold (liftA2 . liftA2 . M.unionWith $ M.unionWith (<>))
+  P.fold
+    (liftA2 . liftA2 . M.unionWith $ M.unionWith (<>))
     (First Nothing, (mempty, mempty))
     (\(ds, (w, fol)) ->
       case ds of
         First Nothing -> IM.empty
         First (Just i) ->
-          IM.singleton i (w, Folder $ variationFromMap "nominal" <$> fol)
+          IM.singleton
+            i
+            ( Sum . fromJust $ getFirst w
+            , Folder $ variationFromMap "nominal" <$> fol
+            )
     )
     $ P.map prep
       <-< P.filter filt
