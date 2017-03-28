@@ -14,7 +14,7 @@ import           Control.Lens
 import qualified Data.ByteString.Lazy   as BS
 import qualified Data.IntMap.Strict     as IM
 import qualified Data.Map.Strict        as M
-import           Data.Maybe             (fromMaybe, fromJust)
+import           Data.Maybe             (fromJust, fromMaybe)
 import           Data.Monoid            hiding ((<>))
 import           Data.Semigroup         ((<>))
 import           Data.Serialize
@@ -58,7 +58,7 @@ inArgs = InArgs
     ( long "lumi"
     <> metavar "LUMI" )
   <*> optional
-    ( strOption (long "regex" <> metavar "REGEX=\".*\"") )
+    ( strOption (long "regex" <> metavar "REGEX=\"/\"") )
   <*> some (strArgument (metavar "PREDFILES"))
 
 opts :: ParserInfo InArgs
@@ -80,7 +80,9 @@ mainWith writeFiles = do
     fromMaybe (error "failed to parse xsec file.")
       <$> (fmap.fmap.fmap) fst (readXSecFile (xsecfile args))
 
-  let f = decodeFile . fromMaybe "*" $ regex args
+  -- TODO
+  -- there is a space leak here I think.
+  let f = decodeFile . fromMaybe "/" $ regex args
   procmap <-
     P.foldM
       (\x fn -> IM.unionWith (\y -> seqT . mappend y) x <$> f fn)

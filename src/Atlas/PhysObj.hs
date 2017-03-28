@@ -8,6 +8,8 @@ import           Control.Monad.Trans.Class
 import           Control.Monad.Trans.Maybe
 import           Control.Monad.Trans.Writer
 
+-- TODO
+-- add ReaderT DataMC'
 
 -- an MC object:
 -- we have variations on the weights of the object
