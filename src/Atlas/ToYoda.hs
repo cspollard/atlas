@@ -117,7 +117,7 @@ processMapFromFiles
 processMapFromFiles rxp infs = do
   -- TODO
   -- there is a space leak here I think.
-  let f = decodeFile $ fromMaybe "/" rxp
+  let f = decodeFile rxp
   P.foldM
     (\x fn -> IM.unionWith (\y -> seqT . mappend y) x <$> f fn)
     (return IM.empty)
@@ -128,7 +128,7 @@ processMapFromFiles rxp infs = do
 -- TODO
 -- we are writing a lot more than we need to here.
 decodeFile
-  :: String
+  :: Maybe String
   -> String
   -> IO (IM.IntMap (Sum Double, Folder (Vars YodaObj)))
 decodeFile rxp f = do
@@ -143,7 +143,7 @@ decodeFile rxp f = do
   --      zipped into Folder (Vars YodaObj).
 
   let filt ((i, _), (t, _)) =
-        matchRegex rxp (T.unpack t)
+        fromMaybe (const True) (matchRegex <$> rxp) (T.unpack t)
         && processTitle i /= "other"
 
       prep ((i, d), (t, (t', y))) =
