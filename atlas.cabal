@@ -32,7 +32,6 @@ library
 
   build-depends:       base == 4.9.*
                      , lens == 4.15.*
-                     , list-transformer == 1.0.*
                      , transformers == 0.5.*
                      , foldl == 1.2.*
                      , bytestring == 0.10.*
@@ -60,7 +59,6 @@ library
 executable run-atlas-hadd
   main-is:             app/run-atlas-hadd.hs
   build-depends:       base == 4.9.*
-                     , list-transformer == 1.0.*
                      , foldl == 1.2.*
                      , lens == 4.15.*
                      , containers == 0.5.*
@@ -68,6 +66,8 @@ executable run-atlas-hadd
                      , text == 1.2.*
                      , cereal == 0.5.*
                      , zlib == 0.6.*
+                     , pipes == 4.3.*
+                     , pipes-bytestring == 2.1.*
                      , optparse-applicative == 0.13.*
                      , deepseq == 1.4.*
                      , histogram-extras == 0.2.*

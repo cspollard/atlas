@@ -1,17 +1,22 @@
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TupleSections     #-}
 
 module Main where
 
 import           Atlas
 import           Atlas.ToYoda
-import           Codec.Compression.GZip (compress, decompress)
-import           Control.DeepSeq
-import qualified Control.Foldl          as F
+import           Codec.Compression.GZip (compress)
 import           Control.Lens
+import           Control.Monad          (forever)
 import qualified Data.ByteString.Lazy   as BS
+import qualified Data.IntMap.Strict     as IM
+import qualified Data.Map.Strict        as M
 import           Data.Monoid
-import           Data.Serialize         (decodeLazy, encodeLazy)
-import qualified List.Transformer       as L
+import           Data.Serialize         (Serialize (..), encode)
 import           Options.Applicative
+import           Pipes                  ((<-<))
+import qualified Pipes                  as P
+import qualified Pipes.ByteString       as PBS
 import           System.IO
 
 data InArgs =
@@ -34,31 +39,27 @@ main :: IO ()
 main = do
   hSetBuffering stdout LineBuffering
   args <- execParser $ info (helper <*> inArgs) fullDesc
-  let f =
-        F.FoldM
-          (\x s -> merge x . toMaybe <$> decodeFile (regex args) s)
-          (return Nothing)
-          return
 
-  out <-
-    F.impurely L.foldM f
-      (L.select (infiles args) :: L.ListT IO String)
+  procmap <- processMapFromFiles (regex args) (P.each $ infiles args)
 
-  BS.writeFile (outfile args) (compress $ encodeLazy out)
+  let procmap' =
+        IM.toList procmap <&>
+          \(i, (d, m)) ->
+            fmap ((i, d),)
+            . concatMap sequenceA
+            . M.toList
+            . folderToMap
+            . fmap (M.toList . variationsToMap "nominal")
+            $ m
 
+  BS.writeFile (outfile args)
+    . compress
+    . PBS.toLazy
+    $ serializer
+      <-< P.each procmap'
 
-  where
-      merge x Nothing = x
-      merge Nothing y = y
-      merge (Just (dsid, sumwgt, hs)) (Just (dsid', sumwgt', hs')) =
-          let x =
-                if dsid == dsid'
-                  then dsid
-                  else error "attempt to add histograms with different dsids!"
-
-              y = sumwgt + sumwgt'
-              z = mappend hs hs'
-          in z `deepseq` Just (x, y, z)
-
-      toMaybe (Left _)  = Nothing
-      toMaybe (Right x) = x
+-- | Serialize data into strict ByteStrings.
+serializer :: (Serialize a, Monad m) => P.Pipe a PBS.ByteString m ()
+serializer = forever $ do
+    x <- P.await
+    P.yield (encode x)

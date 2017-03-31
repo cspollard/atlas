@@ -5,7 +5,7 @@
 {-# LANGUAGE TupleSections       #-}
 
 module Atlas.ToYoda
-  ( scaleH, variationFromMap, mainWith, decodeFile
+  ( scaleH, variationFromMap, mainWith, decodeFile, processMapFromFiles
   ) where
 
 import           Atlas
