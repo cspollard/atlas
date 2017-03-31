@@ -61,8 +61,8 @@ inArgs = InArgs
     ( long "lumi"
     <> metavar "LUMI" )
   <*> optional
-    ( strOption (long "regex" <> metavar "REGEX=\"/\"") )
-  <*> some (strArgument (metavar "PREDFILES"))
+    ( strOption (long "regex" <> metavar "REGEX=\".*\"") )
+  <*> some (strArgument (metavar "INFILES"))
 
 opts :: ParserInfo InArgs
 opts = info (helper <*> inArgs) fullDesc

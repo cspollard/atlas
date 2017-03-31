@@ -13,6 +13,7 @@ import qualified Data.IntMap.Strict     as IM
 import qualified Data.Map.Strict        as M
 import           Data.Monoid
 import           Data.Serialize         (Serialize (..), encode)
+import qualified Data.Text              as T
 import           Options.Applicative
 import           Pipes                  ((<-<))
 import qualified Pipes                  as P
@@ -42,21 +43,24 @@ main = do
 
   procmap <- processMapFromFiles (regex args) (infiles args)
 
-  let procmap' =
-        IM.toList procmap <&>
-          \(i, (d, m)) ->
-            fmap ((i, d),)
-            . concatMap sequenceA
-            . M.toList
-            . folderToMap
-            . fmap (M.toList . variationsToMap "nominal")
-            $ m
+  -- TODO
+  -- we are writing a lot more than we need to here.
+  let procmap' :: [((Int, Sum Double), (T.Text, (T.Text, YodaObj)))]
+      procmap' =
+        concat
+        $ IM.toList procmap
+        <&> \(i, (d, m)) ->
+          fmap ((i, d),)
+          . concatMap sequenceA
+          . M.toList
+          . folderToMap
+          . fmap (M.toList . variationsToMap "nominal")
+          $ m
 
   BS.writeFile (outfile args)
     . compress
     . PBS.toLazy
-    $ serializer
-      <-< P.each procmap'
+    $ serializer <-< P.each procmap'
 
 -- | Serialize data into strict ByteStrings.
 serializer :: (Serialize a, Monad m) => P.Pipe a PBS.ByteString m ()
