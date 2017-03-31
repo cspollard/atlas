@@ -40,7 +40,7 @@ main = do
   hSetBuffering stdout LineBuffering
   args <- execParser $ info (helper <*> inArgs) fullDesc
 
-  procmap <- processMapFromFiles (regex args) (P.each $ infiles args)
+  procmap <- processMapFromFiles (regex args) (infiles args)
 
   let procmap' =
         IM.toList procmap <&>

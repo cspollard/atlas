@@ -6,6 +6,7 @@
 
 module Atlas.ToYoda
   ( scaleH, variationFromMap, mainWith, decodeFile, processMapFromFiles
+  , ProcMap
   ) where
 
 import           Atlas
@@ -82,7 +83,7 @@ mainWith writeFiles = do
     fromMaybe (error "failed to parse xsec file.")
       <$> (fmap.fmap.fmap) fst (readXSecFile (xsecfile args))
 
-  procmap <- processMapFromFiles (regex args) (P.each $ infiles args)
+  procmap <- processMapFromFiles (regex args) (infiles args)
 
   -- TODO
   -- so much traverse.....
@@ -111,8 +112,8 @@ mainWith writeFiles = do
 
 processMapFromFiles
   :: Maybe String
-  -> P.Producer String IO ()
-  -> IO (IM.IntMap (Sum Double, Folder (Vars YodaObj)))
+  -> [String]
+  -> IO (ProcMap (Sum Double, Folder (Vars YodaObj)))
 processMapFromFiles rxp infs = do
   -- TODO
   -- there is a space leak here I think.
@@ -121,7 +122,7 @@ processMapFromFiles rxp infs = do
     (\x fn -> IM.unionWith (\y -> seqT . mappend y) x <$> f fn)
     (return IM.empty)
     return
-    infs
+    (P.each infs)
 
 
 -- TODO
