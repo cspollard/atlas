@@ -4,7 +4,9 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections       #-}
 
-module Atlas.ToYoda where
+module Atlas.ToYoda
+  ( scaleH, variationFromMap, mainWith, decodeFile
+  ) where
 
 import           Atlas
 import           Atlas.CrossSections
@@ -80,15 +82,7 @@ mainWith writeFiles = do
     fromMaybe (error "failed to parse xsec file.")
       <$> (fmap.fmap.fmap) fst (readXSecFile (xsecfile args))
 
-  -- TODO
-  -- there is a space leak here I think.
-  let f = decodeFile . fromMaybe "/" $ regex args
-  procmap <-
-    P.foldM
-      (\x fn -> IM.unionWith (\y -> seqT . mappend y) x <$> f fn)
-      (return IM.empty)
-      return
-      (P.each $ infiles args)
+  procmap <- processMapFromFiles (regex args) (P.each $ infiles args)
 
   -- TODO
   -- so much traverse.....
@@ -115,10 +109,23 @@ mainWith writeFiles = do
 
   writeFiles (lumi args) (outfolder args) procmap'
 
+processMapFromFiles
+  :: Maybe String
+  -> P.Producer String IO ()
+  -> IO (IM.IntMap (Sum Double, Folder (Vars YodaObj)))
+processMapFromFiles rxp infs = do
+  -- TODO
+  -- there is a space leak here I think.
+  let f = decodeFile $ fromMaybe "/" rxp
+  P.foldM
+    (\x fn -> IM.unionWith (\y -> seqT . mappend y) x <$> f fn)
+    (return IM.empty)
+    return
+    infs
 
-dsidOTHER :: Int
-dsidOTHER = 999999
 
+-- TODO
+-- we are writing a lot more than we need to here.
 decodeFile
   :: String
   -> String

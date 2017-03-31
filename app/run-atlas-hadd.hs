@@ -2,6 +2,7 @@
 module Main where
 
 import           Atlas
+import           Atlas.ToYoda
 import           Codec.Compression.GZip (compress, decompress)
 import           Control.DeepSeq
 import qualified Control.Foldl          as F
@@ -43,7 +44,7 @@ main = do
     F.impurely L.foldM f
       (L.select (infiles args) :: L.ListT IO String)
 
-  BS.writeFile (outfile args) (compress . encodeLazy $ out)
+  BS.writeFile (outfile args) (compress $ encodeLazy out)
 
 
   where
@@ -61,15 +62,3 @@ main = do
 
       toMaybe (Left _)  = Nothing
       toMaybe (Right x) = x
-
-
-decodeFile
-  :: Maybe String -> String -> IO (Either String (Maybe (Int, Double, Folder (Vars YodaObj))))
-decodeFile rxp f = do
-  putStrLn ("decoding file " ++ f)
-  -- make sure we actually read the entire structure in.
-  force
-    . (fmap.fmap) (over _3 $ filterFolder rxp)
-    . decodeLazy
-    . decompress
-    <$> BS.readFile f
