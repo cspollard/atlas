@@ -23,7 +23,7 @@ import           Data.YODA.Obj
 import           Pipes                      as P
 import qualified Pipes.ByteString           as PBS
 import qualified Pipes.Parse                as P
-import           Pipes.Prelude              as P
+import qualified Pipes.Prelude              as P
 import           System.IO                  (IOMode (..), hFlush, stdout,
                                              withFile)
 
@@ -33,7 +33,9 @@ addFiles
   -> Either String (Int, Sum Double, Folder (Vars YodaObj))
 addFiles (i, w, f) (i', w', f')
   | i /= i' = Left "attempting to add two different dsids!"
-  | otherwise = Right (i, w <> w', f <> f')
+  | otherwise =
+    let w'' = w <> w'; f'' = f <> f'
+    in w'' `seq` f'' `seq` Right (i, w'', f'')
 
 encodeFile :: String -> (Int, Sum Double, Folder (Vars YodaObj)) -> IO ()
 encodeFile fname (i, w, f) = do
@@ -41,12 +43,12 @@ encodeFile fname (i, w, f) = do
   withFile fname WriteMode $ \h ->
     runEffect
     $ PBS.toHandle h
-      <-< compress serializeP
       <-<
+        compress
         ( do
           yield (encode i)
           yield (encode w)
-          yield (encode . M.toList $ folderToMap f)
+          serializeP <-< P.each (M.toList $ folderToMap f)
         )
 
 decodeFile
@@ -63,15 +65,15 @@ decodeFile rxp fname = do
           fol <-
             P.fold (flip $ uncurry M.insert) M.empty Folder
             $ P.filter filt <-< void p
-          return . Right $ (i, w, fol)
-        Nothing -> return . Left $ "failed to parse file" ++ fname
+          seq fol $ return . Right $ (i, w, fol)
+        Nothing -> return . Left $ "failed to parse file " ++ fname
 
   where
     filt = fromMaybe (const True) (matchRegex <$> rxp) . T.unpack . fst
     deser p = do
       (mi, p') <- runStateT deserializeP p
       (mw, p'') <- runStateT deserializeP p'
-      return $ (,,) <$> mi <*> mw <*> pure (P.parsed_ deserializeP p'')
+      return $ (,,) <$> mi <*> mw <*> Just (P.parsed_ deserializeP p'')
 
 
 decodeFiles
@@ -103,7 +105,11 @@ decodeFiles' rxp infs =
     add x@(Just (Left _)) _        = x
     add (Just _) x@(Left _)        = Just x
 
--- a lot of code taken from https://hackage.haskell.org/package/pipes-zlib-0.4.4.1/docs/src/Pipes-Zlib.html
+
+
+
+-- a lot of code taken from
+-- https://hackage.haskell.org/package/pipes-zlib-0.4.4.1/docs/src/Pipes-Zlib.html
 gzWindowBits :: WindowBits
 gzWindowBits = Z.WindowBits 31
 
@@ -121,8 +127,8 @@ fromPopper pop = go
 
 decompress
   :: MonadIO m
-  => Proxy x' x () BS.ByteString m r -- ^ Compressed stream
-  -> Proxy x' x () BS.ByteString m r -- ^ Decompressed stream
+  => Proxy x' x () BS.ByteString m r
+  -> Proxy x' x () BS.ByteString m r
 decompress p0 = do
     inf <- liftIO $ Z.initInflate gzWindowBits
     r <- for p0 $ \bs -> do
@@ -134,8 +140,8 @@ decompress p0 = do
 
 compress
   :: MonadIO m
-  => Proxy x' x () BS.ByteString m r -- ^ Decompressed stream
-  -> Proxy x' x () BS.ByteString m r -- ^ Compressed stream
+  => Proxy x' x () BS.ByteString m r
+  -> Proxy x' x () BS.ByteString m r
 compress p0 = do
     def <- liftIO $ Z.initDeflate (-1) gzWindowBits
     r <- for p0 $ \bs -> do
@@ -147,22 +153,20 @@ compress p0 = do
 deserializeP
   :: (Serialize a, Monad m)
   => P.Parser BS.ByteString m (Maybe a)
-deserializeP = go Nothing Nothing
+deserializeP = go Nothing
   where
-    go mk mbin = do
-      bin <- maybe (fromMaybe BS.empty <$> P.draw) return mbin
+    go mk = do
+      bin <- fromMaybe BS.empty <$> P.draw
       case fromMaybe (runGetPartial get) mk bin of
-        Fail _reason _leftover ->
-          return Nothing
-        Partial k ->
-          go (Just k) Nothing
+        Fail _reason _leftover -> return Nothing
+        Partial k -> go (Just k)
         Done c bin' -> do
-          P.unDraw bin'
+          when (bin' /= BS.empty) $ P.unDraw bin'
           return $ Just c
 
 
 -- | Serialize data into strict ByteStrings.
-serializeP :: (Serialize a, Monad m) => Pipe a PBS.ByteString m ()
+serializeP :: (Serialize a, Monad m) => Pipe a BS.ByteString m ()
 serializeP = forever $ do
     x <- await
     yield (encode x)
