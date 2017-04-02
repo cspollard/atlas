@@ -4,9 +4,9 @@ module Atlas.PhysObj where
 
 import           Atlas.Corrected
 import           Atlas.Variation
-import           Control.Monad.Trans.Class
+import           Control.Monad.Trans
 import           Control.Monad.Trans.Maybe
-import           Control.Monad.Trans.Writer
+import           Control.Monad.Writer
 
 -- TODO
 -- add ReaderT DataMC'

@@ -71,15 +71,15 @@ channelsWithLabels fns fills =
 innerF :: Monad m => (a -> m b) -> Foldl (m b) c -> Foldl (m a) c
 innerF g = F.premap (g =<<)
 
-outerM :: Monad m => (a -> m b) -> Foldl (m b) (m c) -> Foldl (m a) (m c)
-outerM g (F.Fold comb start done) = F.Fold comb' start' done'
-  where
-    start' = return start
-    done' x = done =<< x
-    comb' mx ma = flip comb (g =<< ma) <$> mx
-
-outer :: Applicative m => (a -> m b) -> Foldl b c -> Foldl a (m c)
-outer g = F.premap g . liftFA
+-- outerM :: Monad m => (a -> m b) -> Foldl (m b) (m c) -> Foldl (m a) (m c)
+-- outerM g (F.Fold comb start done) = F.Fold comb' start' done'
+--   where
+--     start' = return start
+--     done' x = done =<< x
+--     comb' mx ma = flip comb (g =<< ma) <$> mx
+--
+-- outer :: Applicative m => (a -> m b) -> Foldl b c -> Foldl a (m c)
+-- outer g = F.premap g . liftFA
 
 bindF :: Monad m => (a -> m b) -> Foldl b (m c) -> Foldl a (m c)
 bindF g (F.Fold comb start done) = F.Fold comb' start' done'

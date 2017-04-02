@@ -24,6 +24,7 @@ library
                      , Atlas.Corrected
                      , Atlas.PhysObj
                      , Atlas.ToYoda
+                     , Atlas.Streaming
                      , Atlas
 
 
@@ -32,6 +33,7 @@ library
 
   build-depends:       base == 4.9.*
                      , lens == 4.15.*
+                     , mtl == 2.2.*
                      , transformers == 0.5.*
                      , foldl == 1.2.*
                      , bytestring == 0.10.*
@@ -46,6 +48,8 @@ library
                      , regex-posix == 0.95.*
                      , pipes == 4.3.*
                      , pipes-bytestring == 2.1.*
+                     , pipes-parse == 3.0.*
+                     , streaming-commons == 0.1.*
                      , variation == 0.1.*
                      , histogram-fill == 0.8.*
                      , hhep == 0.2.*

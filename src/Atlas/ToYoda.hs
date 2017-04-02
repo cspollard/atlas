@@ -5,29 +5,23 @@
 {-# LANGUAGE TupleSections       #-}
 
 module Atlas.ToYoda
-  ( scaleH, variationFromMap, mainWith, decodeFile, processMapFromFiles
-  , ProcMap
+  ( scaleH, variationFromMap, decodeFile, processMapFromFiles
+  , ProcMap, mainWith
   ) where
 
 import           Atlas
 import           Atlas.CrossSections
 import           Atlas.ProcessInfo
-import           Codec.Compression.GZip (decompress)
 import           Control.Lens
-import qualified Data.ByteString.Lazy   as BS
-import qualified Data.IntMap.Strict     as IM
-import qualified Data.Map.Strict        as M
-import           Data.Maybe             (fromJust, fromMaybe)
-import           Data.Monoid            hiding ((<>))
-import           Data.Semigroup         ((<>))
-import           Data.Serialize
-import qualified Data.Text              as T
+import qualified Data.IntMap.Strict  as IM
+import qualified Data.Map.Strict     as M
+import           Data.Maybe          (fromMaybe)
+import           Data.Monoid         hiding ((<>))
+import           Data.Semigroup      ((<>))
 import           Options.Applicative
-import           Pipes                  ((<-<))
-import qualified Pipes                  as P
-import qualified Pipes.ByteString       as PBS
-import qualified Pipes.Prelude          as P
-import           System.IO              (hFlush, stdout)
+import           Pipes               ((<-<))
+import qualified Pipes               as P
+import qualified Pipes.Prelude       as P
 
 type ProcMap = IM.IntMap
 
@@ -35,9 +29,6 @@ scaleH :: Double -> Obj -> Obj
 scaleH x (H1DD h) = H1DD $ scaling x h
 scaleH x (P1DD h) = P1DD $ scaling x h
 scaleH x (H2DD h) = H2DD $ scaling x h
-
-seqT :: (t, t1) -> (t, t1)
-seqT (a, b) = a `seq` b `seq` (a, b)
 
 data InArgs =
   InArgs
@@ -83,102 +74,45 @@ mainWith writeFiles = do
     fromMaybe (error "failed to parse xsec file.")
       <$> (fmap.fmap.fmap) fst (readXSecFile (xsecfile args))
 
-  procmap <- processMapFromFiles (regex args) (infiles args)
+  epm <- processMapFromFiles (regex args) (infiles args)
+  case epm of
+    Left err -> error err
+    Right procmap -> do
+      -- TODO
+      -- so much traverse.....
+      let procmap' =
+            flip IM.mapWithKey procmap
+            $ \ds (Sum w, hs) ->
+              if ds == 0
+                then
+                  hs
+                    & over (traverse.traverse.annots)
+                      ( (at "LineStyle" ?~ "solid")
+                      . (at "LineColor" ?~ "Black")
+                      . (at "DotSize" ?~ "0.15")
+                      . (at "ErrorBars" ?~ "1")
+                      . (at "PolyMarker" ?~ "*")
+                      . (at "Title" ?~ "\"data\"")
+                      )
+                else
+                  let t = ("\"" <> processTitle ds <> "\"")
+                  in hs
+                      & over
+                        (traverse.traverse)
+                        ( over noted (scaleH (xsecs IM.! ds / w))
+                          . set (annots.at "Title") (Just t)
+                        )
 
-  -- TODO
-  -- so much traverse.....
-  let procmap' =
-        flip IM.mapWithKey procmap
-        $ \ds (Sum w, hs) ->
-          if ds == 0
-            then
-              hs
-                & traverse.traverse.annots.at "LineStyle" ?~ "solid"
-                & traverse.traverse.annots.at "LineColor" ?~ "Black"
-                & traverse.traverse.annots.at "DotSize" ?~ "0.15"
-                & traverse.traverse.annots.at "ErrorBars" ?~ "1"
-                & traverse.traverse.annots.at "PolyMarker" ?~ "*"
-                & traverse.traverse.annots.at "Title" ?~ "\"data\""
-            else
-              let t = ("\"" <> processTitle ds <> "\"")
-              in hs
-                  & over
-                    (traverse.traverse)
-                    ( over noted (scaleH (xsecs IM.! ds / w))
-                      . set (annots.at "Title") (Just t)
-                    )
-
-  writeFiles (lumi args) (outfolder args) procmap'
+      writeFiles (lumi args) (outfolder args) procmap'
 
 processMapFromFiles
-  :: Maybe String
-  -> [String]
-  -> IO (ProcMap (Sum Double, Folder (Vars YodaObj)))
-processMapFromFiles rxp infs = do
-  -- TODO
-  -- there is a space leak here I think.
-  let f = decodeFile rxp
-  P.foldM
-    (\x fn -> IM.unionWith (\y -> seqT . mappend y) x <$> f fn)
-    (return IM.empty)
-    return
-    (P.each infs)
+  :: Foldable f
+  => Maybe String
+  -> f String
+  -> IO (Either String (IM.IntMap (Sum Double, Folder (Vars YodaObj))))
+processMapFromFiles rxp infs =
+  P.fold (liftA2 add) (Right IM.empty) id
+  $ P.mapM (decodeFile rxp) <-< P.each infs
 
-
--- TODO
--- we are writing a lot more than we need to here.
-decodeFile
-  :: Maybe String
-  -> String
-  -> IO (IM.IntMap (Sum Double, Folder (Vars YodaObj)))
-decodeFile rxp f = do
-  putStrLn ("decoding file " ++ f) >> hFlush stdout
-
-  bs <- decompress <$> BS.readFile f
-
-  -- pipes outline:
-  -- 1) deserialize into items of type (Text, (Text, (Int, Double, YodaObj)))
-  -- 2) cull out those that fail rxp matching
-  -- 3) return obj of type Folder (Vars (Int, Double, YodaObj))), which can be
-  --      zipped into Folder (Vars YodaObj).
-
-  let filt ((i, _), (t, _)) =
-        fromMaybe (const True) (matchRegex <$> rxp) (T.unpack t)
-        && processTitle i /= "other"
-
-      prep ((i, d), (t, (t', y))) =
-        (First (Just i), (First (Just d), M.singleton t $ M.singleton t' y))
-
-  P.fold
-    (liftA2 . liftA2 . M.unionWith $ M.unionWith (<>))
-    (First Nothing, (mempty, mempty))
-    (\(ds, (w, fol)) ->
-      case ds of
-        First Nothing -> IM.empty
-        First (Just i) ->
-          IM.singleton
-            i
-            ( Sum . fromJust $ getFirst w
-            , Folder $ variationFromMap "nominal" <$> fol
-            )
-    )
-    $ P.map prep
-      <-< P.filter filt
-      <-< deserializer
-      <-< PBS.fromLazy bs
-
--- | De-serialize data from strict 'ByteString's.  Uses @cereal@'s
--- incremental 'Data.Serialize.Get' parser.
-deserializer :: (Serialize a, Monad m) => P.Pipe PBS.ByteString a m ()
-deserializer = loop Nothing Nothing
   where
-    loop mk mbin = do
-        bin <- maybe P.await return mbin
-        case fromMaybe (runGetPartial get) mk bin of
-          Fail reason _leftover ->
-              fail reason
-          Partial k ->
-              loop (Just k) Nothing
-          Done c bin' -> do
-              P.yield c
-              loop Nothing (Just bin')
+    add im (i, w, fol) = IM.insertWith mappend i (w, fol) im

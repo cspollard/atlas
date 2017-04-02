@@ -4,12 +4,11 @@ module Atlas.Corrected
   , ScaleFactor, SF, runSF, sf
   ) where
 
-import           Control.Monad.Trans.Writer.Lazy
-import           Data.Foldable                   (fold)
+import           Control.Monad.Writer.Lazy
+import           Data.Foldable             (fold)
 import           Data.Functor.Identity
-import qualified Data.Map                        as M
-import           Data.Monoid
-import qualified Data.Text                       as T
+import qualified Data.Map                  as M
+import qualified Data.Text                 as T
 
 -- a scale factor is just a writer monad with the underlying monoid of
 -- Reals under multiplication.
@@ -25,7 +24,7 @@ runCorrectedT = runWriterT
 runCorrected :: Corrected w a -> (a, w)
 runCorrected = runIdentity . runCorrectedT
 
-withCorrection :: Monad m => (a, b) -> CorrectedT b m a
+withCorrection :: (Monad m, Monoid b) => (a, b) -> CorrectedT b m a
 withCorrection = writer
 
 

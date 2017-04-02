@@ -4,20 +4,8 @@
 module Main where
 
 import           Atlas
-import           Atlas.ToYoda
-import           Codec.Compression.GZip (compress)
-import           Control.Lens
-import           Control.Monad          (forever)
-import qualified Data.ByteString.Lazy   as BS
-import qualified Data.IntMap.Strict     as IM
-import qualified Data.Map.Strict        as M
 import           Data.Monoid
-import           Data.Serialize         (Serialize (..), encode)
-import qualified Data.Text              as T
 import           Options.Applicative
-import           Pipes                  ((<-<))
-import qualified Pipes                  as P
-import qualified Pipes.ByteString       as PBS
 import           System.IO
 
 data InArgs =
@@ -41,29 +29,7 @@ main = do
   hSetBuffering stdout LineBuffering
   args <- execParser $ info (helper <*> inArgs) fullDesc
 
-  procmap <- processMapFromFiles (regex args) (infiles args)
-
-  -- TODO
-  -- we are writing a lot more than we need to here.
-  let procmap' :: [((Int, Sum Double), (T.Text, (T.Text, YodaObj)))]
-      procmap' =
-        concat
-        $ IM.toList procmap
-        <&> \(i, (d, m)) ->
-          fmap ((i, d),)
-          . concatMap sequenceA
-          . M.toList
-          . folderToMap
-          . fmap (M.toList . variationsToMap "nominal")
-          $ m
-
-  BS.writeFile (outfile args)
-    . compress
-    . PBS.toLazy
-    $ serializer <-< P.each procmap'
-
--- | Serialize data into strict ByteStrings.
-serializer :: (Serialize a, Monad m) => P.Pipe a PBS.ByteString m ()
-serializer = forever $ do
-    x <- P.await
-    P.yield (encode x)
+  efol <- decodeFiles' (regex args) (infiles args)
+  case efol of
+    Left err  -> error err
+    Right fol -> encodeFile (outfile args) fol
