@@ -104,15 +104,3 @@ mainWith writeFiles = do
                         )
 
       writeFiles (lumi args) (outfolder args) procmap'
-
-processMapFromFiles
-  :: Foldable f
-  => Maybe String
-  -> f String
-  -> IO (Either String (IM.IntMap (Sum Double, Folder (Vars YodaObj))))
-processMapFromFiles rxp infs =
-  P.fold (liftA2 add) (Right IM.empty) id
-  $ P.mapM (decodeFile rxp) <-< P.each infs
-
-  where
-    add im (i, w, fol) = IM.insertWith mappend i (w, fol) im
