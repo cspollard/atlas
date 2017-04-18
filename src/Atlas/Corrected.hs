@@ -6,7 +6,7 @@ module Atlas.Corrected
 
 import           Control.Monad.Writer.Lazy hiding ((<>))
 import           Data.Functor.Identity
-import qualified Data.Map                  as M
+import qualified Data.Map.Strict           as M
 import           Data.Semigroup
 import qualified Data.Text                 as T
 
@@ -33,7 +33,7 @@ mapCorrectedT
 mapCorrectedT = mapWriterT
 
 
-data ScaleFactor a = SF a (M.Map T.Text a) deriving (Show)
+data ScaleFactor a = SF !a !(M.Map T.Text a) deriving Show
 
 instance Semigroup a => Semigroup (ScaleFactor a) where
   SF x mx <> SF _ my =
@@ -46,7 +46,14 @@ instance Monoid a => Monoid (ScaleFactor a) where
   mempty = SF mempty mempty
   {-# INLINABLE mempty #-}
 
-  a `mappend` b = unwrapMonoid $ WrapMonoid a <> WrapMonoid b
+  -- TODO
+  -- why does this make a difference?
+  -- a `mappend` b = unwrapMonoid $ WrapMonoid a <> WrapMonoid b
+  SF x mx `mappend` SF _ my =
+    let dxy = my `M.difference` mx
+        mx' = dxy `M.union` mx
+        x' = foldl mappend x dxy
+    in SF x' mx'
   {-# INLINABLE mappend #-}
 
 
