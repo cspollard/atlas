@@ -5,7 +5,7 @@
 {-# LANGUAGE TupleSections       #-}
 
 module Atlas.ToYoda
-  ( scaleH, variationFromMap, decodeFile, processMapFromFiles
+  ( scaleH, variationFromMap, decodeFile, decodeFiles
   , ProcMap, mainWith
   ) where
 
@@ -19,9 +19,6 @@ import           Data.Maybe          (fromMaybe)
 import           Data.Monoid         hiding ((<>))
 import           Data.Semigroup      ((<>))
 import           Options.Applicative
-import           Pipes               ((<-<))
-import qualified Pipes               as P
-import qualified Pipes.Prelude       as P
 
 type ProcMap = IM.IntMap
 
@@ -60,7 +57,7 @@ opts = info (helper <*> inArgs) fullDesc
 
 -- TODO
 -- partial!
-variationFromMap :: Ord k => k -> M.Map k a -> Variations k a
+variationFromMap :: Ord k => k -> M.Map k a -> Variations (M.Map k) a
 variationFromMap k m =
   let n = m M.! k
   in Variations n $ sans k m
@@ -74,7 +71,7 @@ mainWith writeFiles = do
     fromMaybe (error "failed to parse xsec file.")
       <$> (fmap.fmap.fmap) fst (readXSecFile (xsecfile args))
 
-  epm <- processMapFromFiles (regex args) (infiles args)
+  epm <- decodeFiles (regex args) (infiles args)
   case epm of
     Left err -> error err
     Right procmap -> do

@@ -7,6 +7,7 @@ import           Atlas.Variation
 import           Control.Monad.Trans
 import           Control.Monad.Trans.Maybe
 import           Control.Monad.Writer
+import           Data.Tuple                (swap)
 
 -- TODO
 -- add ReaderT DataMC'
@@ -19,9 +20,11 @@ import           Control.Monad.Writer
 
 -- TODO
 -- should this be swapped?
--- MaybeT (CorrectedT (Vars SF) Vars)
--- ??
-type PhysObj = CorrectedT (Vars SF) (MaybeT Vars)
+-- does this work if SFs are dependent on the contained value?
+-- TODO
+-- can we move Vars SF all the way inside so we only run it once?
+-- MaybeT (VarsT (CorrectedT (Vars SF)))
+type PhysObj = MaybeT (CorrectedT (Vars SF) Vars)
 
 onlyObjVars :: Vars a -> PhysObj a
 onlyObjVars = lift . lift
@@ -33,9 +36,14 @@ onlySFVars sfs x = tell sfs >> return x
 
 runPhysObj :: PhysObj a -> Vars (Maybe (a, Double))
 runPhysObj =
-  (fmap.fmap.fmap) runSF
+  fmap (fmap swap . sequenceA . swap)
+  -- Vars (Maybe a, Double)
   . join
-  . fmap (sequenceA . fmap sequenceA)
-  . runMaybeT
+  -- Vars (Vars (Maybe a, Double))
+  . fmap (sequenceA . (fmap.fmap) runSF)
+  -- Vars (Maybe a, Vars SF)
   . runWriterT
+  -- CorrectedT (Vars SF) Vars (Maybe a)
+  . runMaybeT
+  -- PhysObj a
 {-# INLINABLE runPhysObj #-}
