@@ -16,16 +16,26 @@ import           Control.Monad.Writer
 -- as well as variations on the object iself
 -- these variations must be combined *by the function using them*
 -- otherwise we run into severe performance issues
+
+-- TODO
+-- should this be swapped?
+-- MaybeT (CorrectedT (Vars SF) Vars)
+-- ??
 type PhysObj = CorrectedT (Vars SF) (MaybeT Vars)
 
 onlyObjVars :: Vars a -> PhysObj a
-onlyObjVars = lift.lift
+onlyObjVars = lift . lift
 {-# INLINABLE onlyObjVars #-}
 
 onlySFVars :: Monad m => Vars SF -> a -> CorrectedT (Vars SF) m a
 onlySFVars sfs x = tell sfs >> return x
 {-# INLINABLE onlySFVars #-}
 
-runPhysObj :: PhysObj a -> Vars (Maybe (a, Vars SF))
-runPhysObj = runMaybeT . runWriterT
+runPhysObj :: PhysObj a -> Vars (Maybe (a, Double))
+runPhysObj =
+  (fmap.fmap.fmap) runSF
+  . join
+  . fmap (sequenceA . fmap sequenceA)
+  . runMaybeT
+  . runWriterT
 {-# INLINABLE runPhysObj #-}

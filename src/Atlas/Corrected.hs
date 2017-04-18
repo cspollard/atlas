@@ -4,10 +4,10 @@ module Atlas.Corrected
   , ScaleFactor, SF, runSF, sf
   ) where
 
-import           Control.Monad.Writer.Lazy
-import           Data.Foldable             (fold)
+import           Control.Monad.Writer.Lazy hiding ((<>))
 import           Data.Functor.Identity
 import qualified Data.Map                  as M
+import           Data.Semigroup
 import qualified Data.Text                 as T
 
 -- a scale factor is just a writer monad with the underlying monoid of
@@ -32,23 +32,21 @@ mapCorrectedT
   :: (m1 (a1, w) -> m (a, b)) -> CorrectedT w m1 a1 -> CorrectedT b m a
 mapCorrectedT = mapWriterT
 
--- TODO
--- provide an automatic unique identifier for different systematics?
--- I think this involves adding a StateT Int to my monad stack
--- when I call sf, I increment the SF number
--- then ScaleFactor becomes
--- data ScaleFactor a = SF a IntSet
 
 data ScaleFactor a = SF a (M.Map T.Text a) deriving (Show)
 
-instance Monoid a => Monoid (ScaleFactor a) where
-  mempty = SF mempty mempty
-  SF x mx `mappend` SF _ my =
+instance Semigroup a => Semigroup (ScaleFactor a) where
+  SF x mx <> SF _ my =
     let dxy = my `M.difference` mx
         mx' = dxy `M.union` mx
-        x' = x <> fold dxy
+        x' = foldl (<>) x dxy
     in SF x' mx'
+
+instance Monoid a => Monoid (ScaleFactor a) where
+  mempty = SF mempty mempty
   {-# INLINABLE mempty #-}
+
+  a `mappend` b = unwrapMonoid $ WrapMonoid a <> WrapMonoid b
   {-# INLINABLE mappend #-}
 
 

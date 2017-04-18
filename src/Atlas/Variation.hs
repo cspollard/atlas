@@ -3,7 +3,8 @@ module Atlas.Variation
   , Vars
   ) where
 
+import qualified Data.Map       as M
 import qualified Data.Text      as T
 import           Data.Variation as X
 
-type Vars = Variations T.Text
+type Vars = Variations (M.Map T.Text)
