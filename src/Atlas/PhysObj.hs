@@ -22,7 +22,7 @@ import           Data.Tuple                (swap)
 -- should this be swapped?
 -- does this work if SFs are dependent on the contained value?
 -- TODO
--- can we move Vars SF all the way inside so we only run it once?
+-- can we move Vars SF all the way inside so we only run them once?
 -- MaybeT (VarsT (CorrectedT (Vars SF)))
 type PhysObj = MaybeT (CorrectedT (Vars SF) Vars)
 
@@ -30,7 +30,7 @@ onlyObjVars :: Vars a -> PhysObj a
 onlyObjVars = lift . lift
 {-# INLINABLE onlyObjVars #-}
 
-onlySFVars :: Monad m => Vars SF -> a -> CorrectedT (Vars SF) m a
+onlySFVars :: Vars SF -> a -> PhysObj a
 onlySFVars sfs x = tell sfs >> return x
 {-# INLINABLE onlySFVars #-}
 
