@@ -6,8 +6,8 @@ import           Atlas.Corrected
 import           Atlas.Variation
 import           Control.Monad.Trans
 import           Control.Monad.Trans.Maybe
-import           Control.Monad.Writer
-import           Data.Tuple                (swap)
+import           Control.Monad.Writer.Strict
+import           Data.Tuple                  (swap)
 
 -- TODO
 -- add ReaderT DataMC'

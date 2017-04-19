@@ -22,7 +22,7 @@ import           Atlas.PhysObj
 import           Atlas.Variation
 import qualified Control.Foldl             as F
 import           Control.Lens
-import           Control.Monad.Trans.Class (lift)
+import           Control.Monad.Fail        as MF
 import           Data.HEP.LorentzVector
 import           Data.Hist
 import qualified Data.Histogram.Generic    as G
@@ -50,28 +50,38 @@ rad = "\\mathrm{rad}"
 pt = "p_{\\mathrm{T}}"
 
 
-cut :: (a -> PhysObj Bool) -> PhysObj a -> PhysObj a
+-- TODO
+-- turn this into MonadFail/MonadThrow? ...
+cut :: MonadFail m => (a -> m Bool) -> m a -> m a
 cut c o = do
   p <- c =<< o
-  if p then o else lift (fail "fail cut")
+  if p then o else MF.fail "fail cut"
 
-channel :: (a -> PhysObj Bool) -> Fills a -> Fills a
+channel :: MonadFail m => (a -> m Bool) -> Foldl (m a) r -> Foldl (m a) r
 channel f = F.premap (cut f)
 
-channelWithLabel :: T.Text -> (a -> PhysObj Bool) -> Fills a -> Fills a
+channelWithLabel
+  :: MonadFail m
+  => T.Text
+  -> (a1 -> m Bool)
+  -> Foldl (m a1) (Folder a)
+  -> Foldl (m a1) (Folder a)
 channelWithLabel n f = fmap (prefixF n) . channel f
 
-channelsWithLabels :: [(T.Text, a -> PhysObj Bool)] -> Fills a -> Fills a
+channelsWithLabels
+  :: (MonadFail m, Semigroup b)
+  => [(T.Text, a -> m Bool)]
+  -> Foldl (m a) (Folder b)
+  -> Foldl (m a) (Folder b)
 channelsWithLabels fns fills =
   mconcat $ uncurry channelWithLabel <$> fns <*> pure fills
-
 
 
 innerF :: Monad m => (a -> m b) -> Foldl (m b) c -> Foldl (m a) c
 innerF g = F.premap (g =<<)
 
 -- outerM :: Monad m => (a -> m b) -> Foldl (m b) (m c) -> Foldl (m a) (m c)
--- outerM g (F.Fold comb start done) = F.Fold comb' start' done'
+-- outerM g (Foldl comb start done) = Foldl comb' start' done'
 --   where
 --     start' = return start
 --     done' x = done =<< x

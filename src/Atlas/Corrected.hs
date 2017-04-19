@@ -4,11 +4,11 @@ module Atlas.Corrected
   , ScaleFactor, SF, runSF, sf
   ) where
 
-import           Control.Monad.Writer.Lazy hiding ((<>))
+import           Control.Monad.Writer.Strict hiding ((<>))
 import           Data.Functor.Identity
-import qualified Data.Map.Strict           as M
+import qualified Data.Map.Strict             as M
 import           Data.Semigroup
-import qualified Data.Text                 as T
+import qualified Data.Text                   as T
 
 -- a scale factor is just a writer monad with the underlying monoid of
 -- Reals under multiplication.
