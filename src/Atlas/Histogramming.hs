@@ -8,7 +8,7 @@
 
 module Atlas.Histogramming
   ( Fill, Fills
-  , dsigdXpbY
+  , dsigdXpbY, dndx
   , mev, gev, rad, pt
   , channel, channelWithLabel, channelsWithLabels
   , hEmpty, hist1DDef, prof1DDef, hist2DDef
@@ -42,6 +42,10 @@ type Fills a = Foldl (PhysObj a) (Folder (Vars YodaObj))
 dsigdXpbY :: T.Text -> T.Text -> T.Text
 dsigdXpbY x y =
   "$\\frac{d\\sigma}{d" <> x <> "} \\frac{\\mathrm{pb}}{" <> y <> "}$"
+
+dndx :: T.Text -> T.Text -> T.Text
+dndx x y =
+  "$\\frac{dN}{d" <> x <> "} \\frac{1}{" <> y <> "}$"
 
 mev, gev, rad, pt :: T.Text
 mev = "\\mathrm{MeV}"
@@ -164,7 +168,7 @@ nH
   => Int -> Fills (f a)
 nH n =
   singleton "/n"
-  <$> hist1DDef (binD 0 n (fromIntegral n)) "$n$" (dsigdXpbY "n" "1")
+  <$> hist1DDef (binD 0 n (fromIntegral n)) "$n$" (dndx "n" "1")
   <$= fromIntegral . length
 
 ptH :: HasLorentzVector a => Fills a
@@ -173,13 +177,13 @@ ptH =
   <$> hist1DDef
       (logBinD 20 25 500) -- :: TransformedBin BinD (Log10BT Double))
       "$p_{\\mathrm T}$ [GeV]"
-      (dsigdXpbY pt gev)
+      (dndx pt gev)
   <$= view lvPt
 
 etaH :: HasLorentzVector a => Fills a
 etaH =
   singleton "/eta"
-  <$> hist1DDef (binD (-3) 39 3) "$\\eta$" (dsigdXpbY "\\eta" "{\\mathrm rad}")
+  <$> hist1DDef (binD (-3) 39 3) "$\\eta$" (dndx "\\eta" "{\\mathrm rad}")
   <$= view lvEta
 
 lvHs
