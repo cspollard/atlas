@@ -50,8 +50,6 @@ rad = "\\mathrm{rad}"
 pt = "p_{\\mathrm{T}}"
 
 
--- TODO
--- turn this into MonadFail/MonadThrow? ...
 cut :: MonadFail m => (a -> m Bool) -> m a -> m a
 cut c o = do
   p <- c =<< o
