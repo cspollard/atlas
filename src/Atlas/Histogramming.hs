@@ -20,6 +20,7 @@ module Atlas.Histogramming
 
 import           Atlas.PhysObj
 import           Atlas.Variation
+import           Control.Foldl             (FoldM (..))
 import qualified Control.Foldl             as F
 import           Control.Lens
 import           Control.Monad.Fail        as MF
@@ -38,6 +39,12 @@ import           Text.Regex.Posix.String
 type Foldl = F.Fold
 type Fill a = Foldl (PhysObj a) (Vars YodaObj)
 type Fills a = Foldl (PhysObj a) (Folder (Vars YodaObj))
+
+
+bindM :: Monad m => FoldM m b a -> (c -> m b) -> FoldM m c a
+bindM (FoldM comb start done) f = FoldM comb' start done
+  where
+    comb' x c = comb x =<< f c
 
 dsigdXpbY :: T.Text -> T.Text -> T.Text
 dsigdXpbY x y =
