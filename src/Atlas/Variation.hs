@@ -18,6 +18,7 @@ import           Data.Functor.Classes
 import qualified Data.Map.Strict         as M
 import           Data.Semigroup
 import           Data.Serialize
+import           Data.SMonoid
 import qualified Data.Text               as T
 import           Data.Variation          as X
 import           GHC.Exts
