@@ -13,7 +13,7 @@ module Atlas.Histogramming
   , channel, channelWithLabel, channelsWithLabels
   , hEmpty, hist1DDef, prof1DDef, hist2DDef
   , nH, ptH, etaH, lvHs
-  , bindF, innerF
+  , bindF, apF
   , (<$=)
   , filterFolder, matchRegex
   ) where
@@ -37,28 +37,22 @@ import           Text.Regex.Posix.String
 
 
 type Foldl = F.Fold
-type Fill a = Foldl (PhysObj a) (Vars YodaObj)
-type Fills a = Foldl (PhysObj a) (Folder (Vars YodaObj))
+type Fill a = FoldM Vars a YodaObj
+type Fills a = FoldM Vars a (Folder YodaObj)
 
 
-bindM :: Monad m => FoldM m b a -> (c -> m b) -> FoldM m c a
-bindM (FoldM comb start done) f = FoldM comb' start done
+bindF :: Monad m => FoldM m a b -> (c -> m a) -> FoldM m c b
+bindF (FoldM comb start done) f = FoldM comb' start done
   where
     comb' x c = comb x =<< f c
 
-dsigdXpbY :: T.Text -> T.Text -> T.Text
-dsigdXpbY x y =
-  "$\\frac{d\\sigma}{d" <> x <> "} \\frac{\\mathrm{pb}}{" <> y <> "}$"
 
-dndx :: T.Text -> T.Text -> T.Text
-dndx x y =
-  "$\\frac{dN}{d" <> x <> "} \\frac{1}{" <> y <> "}$"
-
-mev, gev, rad, pt :: T.Text
-mev = "\\mathrm{MeV}"
-gev = "\\mathrm{GeV}"
-rad = "\\mathrm{rad}"
-pt = "p_{\\mathrm{T}}"
+apF :: Applicative m => Foldl b c -> Foldl (m b) (m c)
+apF (F.Fold comb start done) = F.Fold comb' start' done'
+  where
+    start' = pure start
+    comb' xs x = comb <$> xs <*> x
+    done' = fmap done
 
 
 cut :: MonadFail m => (a -> m Bool) -> m a -> m a
@@ -66,16 +60,19 @@ cut c o = do
   p <- c =<< o
   if p then o else MF.fail "fail cut"
 
-channel :: MonadFail m => (a -> m Bool) -> Foldl (m a) r -> Foldl (m a) r
-channel f = F.premap (cut f)
+
+channel :: MonadFail m => (a -> m Bool) -> FoldM m a r -> FoldM m a r
+channel c f = bindF f (cut c)
+
 
 channelWithLabel
   :: MonadFail m
   => T.Text
-  -> (a1 -> m Bool)
-  -> Foldl (m a1) (Folder a)
-  -> Foldl (m a1) (Folder a)
+  -> (a -> m Bool)
+  -> FoldM m a (Folder b)
+  -> FoldM m a (Folder b)
 channelWithLabel n f = fmap (prefixF n) . channel f
+
 
 channelsWithLabels
   :: (MonadFail m, Semigroup b)
@@ -99,39 +96,17 @@ innerF g = F.premap (g =<<)
 -- outer :: Applicative m => (a -> m b) -> Foldl b c -> Foldl a (m c)
 -- outer g = F.premap g . liftFA
 
-bindF :: Monad m => (a -> m b) -> Foldl b (m c) -> Foldl a (m c)
-bindF g (F.Fold comb start done) = F.Fold comb' start' done'
-  where
-    done' mx = done =<< mx
-    start' = pure start
-    comb' mx a = comb <$> mx <*> g a
-
-liftFA :: Applicative m => Foldl b c -> Foldl (m b) (m c)
-liftFA (F.Fold comb start done) = F.Fold comb' start' done'
-  where
-    start' = pure start
-    comb' xs x = comb <$> xs <*> x
-    done' = fmap done
-
 hEmpty :: (Bin bin, Monoid a) => bin -> Histogram V.Vector bin a
 hEmpty b =
   let v = V.replicate (nBins b) mempty
       uo = Just (mempty, mempty)
   in G.histogramUO b uo v
 
--- TODO
--- I think this would work better with CPS
--- basically: I take a Cont (Double, Double) (Double, Double)
--- you can transform teh 2nd set of Doubles all you want,
--- as long as you deliver what I need
--- however, how do pass an Event to a Histo1D and a Prof1D
--- in the same "pipe"?
-
 pohelper :: Foldl (a, Double) c -> Foldl (PhysObj a) (Vars c)
 pohelper =
   F.premap runPhysObj
   -- Foldl (Vars (Maybe (a, Double))) (Vars c)
-  . liftFA
+  . apF
   -- Foldl (Maybe (a, Double)) c
   . F.handles folded
   -- Foldl (a, Double) c
@@ -212,3 +187,18 @@ filterFolder s f = maybe f (`g` f) s
       let rxp = makeRegex s' :: Regex
           h k _ = matchTest rxp $ T.unpack k
       in inF (M.filterWithKey h)
+
+
+dsigdXpbY :: T.Text -> T.Text -> T.Text
+dsigdXpbY x y =
+  "$\\frac{d\\sigma}{d" <> x <> "} \\frac{\\mathrm{pb}}{" <> y <> "}$"
+
+dndx :: T.Text -> T.Text -> T.Text
+dndx x y =
+  "$\\frac{dN}{d" <> x <> "} \\frac{1}{" <> y <> "}$"
+
+mev, gev, rad, pt :: T.Text
+mev = "\\mathrm{MeV}"
+gev = "\\mathrm{GeV}"
+rad = "\\mathrm{rad}"
+pt = "p_{\\mathrm{T}}"
