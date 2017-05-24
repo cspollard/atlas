@@ -5,8 +5,8 @@
 
 module Atlas.Variation
   ( module X
-  , Vars
-  , variationsToMap
+  , VarsT, Vars
+  , variationToMap, mapToVariation
   , StrictMap, strictMap, unSM
   , lookup, intersectionWith, mapMaybeWithKey
   ) where
@@ -25,10 +25,19 @@ import           GHC.Exts
 import           GHC.Generics
 import           Prelude                 hiding (lookup)
 
-type Vars = Variations (StrictMap T.Text)
+type VarsT = VariationT (StrictMap T.Text)
+type Vars = VarsT Identity
 
-variationsToMap :: Ord k => k -> Variations (StrictMap k) a -> StrictMap k a
-variationsToMap k vs = view variations vs & at k ?~ view nominal vs
+variationToMap :: Ord k => k -> Variation (StrictMap k) a -> StrictMap k a
+variationToMap k v = runIdentity $ do
+  vs <- getVariations v
+  n <- getNominal v
+  return $ vs & at k ?~ n
+
+mapToVariation :: Ord k => k -> StrictMap k a -> Maybe (Variation (StrictMap k) a)
+mapToVariation k m = do
+  n <- m ^? ix k
+  return . variation n $ sans k m
 
 
 newtype StrictMap k a = SM { unSM :: M.Map k a }

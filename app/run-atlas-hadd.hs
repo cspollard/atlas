@@ -26,10 +26,11 @@ inArgs =
 
 main :: IO ()
 main = do
-  hSetBuffering stdout LineBuffering
-  args <- execParser $ info (helper <*> inArgs) fullDesc
-
-  efol <- decodeFiles' (regex args) (infiles args)
-  case efol of
-    Left err  -> error err
-    Right fol -> encodeFile (outfile args) fol
+  return ()
+  -- hSetBuffering stdout LineBuffering
+  -- args <- execParser $ info (helper <*> inArgs) fullDesc
+  --
+  -- efol <- decodeFiles' (regex args) (infiles args)
+  -- case efol of
+  --   Left err  -> error err
+  --   Right fol -> encodeFile (outfile args) fol

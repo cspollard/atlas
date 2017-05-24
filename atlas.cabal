@@ -34,6 +34,8 @@ library
   build-depends:       base == 4.9.*
                      , lens == 4.15.*
                      , mtl == 2.2.*
+                     , mmorph == 1.0.*
+                     , exceptions == 0.8.*
                      , contravariant == 1.4.*
                      , profunctors == 5.2.*
                      , transformers == 0.5.*

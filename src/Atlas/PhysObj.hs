@@ -1,49 +1,46 @@
-{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE DeriveFunctor              #-}
+{-# LANGUAGE DeriveGeneric              #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TupleSections              #-}
 
 module Atlas.PhysObj where
 
 import           Atlas.Corrected
 import           Atlas.Variation
-import           Control.Monad.Trans
+import           Control.Monad.Catch
+import           Control.Monad.Morph
 import           Control.Monad.Trans.Maybe
-import           Control.Monad.Writer.Strict
-import           Data.Tuple                  (swap)
+import           Data.Functor.Identity
+import           GHC.Generics
 
 -- TODO
 -- add ReaderT DataMC'
 
--- an MC object:
--- we have variations on the weights of the object
--- as well as variations on the object iself
--- these variations must be combined *by the function using them*
--- otherwise we run into severe performance issues
+newtype PhysObjT m a = PhysObjT { unPOT :: WriterT SF (MaybeT (VarsT m)) a }
+  deriving
+    ( Generic, Functor, Applicative, Monad
+    , MonadWriter SF, MonadIO, MonadThrow, MonadCatch
+    )
 
--- TODO
--- should this be swapped?
--- does this work if SFs are dependent on the contained value?
--- TODO
--- can we move Vars SF all the way inside so we only run them once?
--- MaybeT (VarsT (CorrectedT (Vars SF)))
-type PhysObj = MaybeT (CorrectedT (Vars SF) Vars)
+instance MonadTrans PhysObjT where
+  lift = PhysObjT . lift . lift . lift
 
-onlyObjVars :: Vars a -> PhysObj a
-onlyObjVars = lift . lift
-{-# INLINABLE onlyObjVars #-}
+instance MFunctor PhysObjT where
+  hoist f = PhysObjT . hoist (hoist $ hoist f) . unPOT
 
-onlySFVars :: Vars SF -> a -> PhysObj a
-onlySFVars sfs x = tell sfs >> return x
-{-# INLINABLE onlySFVars #-}
+type PhysObj = PhysObjT Identity
 
-runPhysObj :: PhysObj a -> Vars (Maybe (a, Double))
-runPhysObj =
-  fmap (fmap swap . sequenceA . swap)
-  -- Vars (Maybe a, Double)
-  . join
-  -- Vars (Vars (Maybe a, Double))
-  . fmap (sequenceA . (fmap.fmap) runSF)
-  -- Vars (Maybe a, Vars SF)
-  . runWriterT
-  -- CorrectedT (Vars SF) Vars (Maybe a)
-  . runMaybeT
-  -- PhysObj a
-{-# INLINABLE runPhysObj #-}
+
+runPhysObj :: Functor m => PhysObjT m a -> VarsT m (Maybe (a, Double))
+runPhysObj = (fmap.fmap.fmap) runSF . runMaybeT . runWriterT . unPOT
+
+
+varSF :: Functor m => VarsT m SF -> PhysObjT m ()
+varSF sfs =
+  -- MaybeT Vars (a, SF)
+  PhysObjT . WriterT . MaybeT
+  -- Vars (Maybe (a, SF))
+  $ Just . ((),) <$> sfs
+
+varObj :: Functor m => VarsT m a -> PhysObjT m a
+varObj xs = PhysObjT . WriterT . MaybeT $ Just . (,mempty) <$> xs

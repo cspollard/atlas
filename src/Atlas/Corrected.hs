@@ -1,10 +1,11 @@
 module Atlas.Corrected
-  ( CorrectedT, withCorrection, runCorrectedT, runCorrected
+  ( module X
+  , CorrectedT, withCorrection, runCorrectedT, runCorrected
   , mapCorrectedT, Corrected, correctedT
   , ScaleFactor, SF, runSF, sf
   ) where
 
-import           Control.Monad.Writer.Strict hiding ((<>))
+import           Control.Monad.Writer.Strict as X hiding ((<>))
 import           Data.Functor.Identity
 import qualified Data.Map.Strict             as M
 import           Data.Semigroup
