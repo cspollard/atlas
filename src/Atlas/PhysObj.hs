@@ -10,6 +10,7 @@ import           Atlas.Variation
 import           Control.Monad.Catch
 import           Control.Monad.Morph
 import           Control.Monad.Trans.Maybe
+import           Data.Functor.Classes
 import           Data.Functor.Identity
 import           GHC.Generics
 
@@ -19,7 +20,7 @@ import           GHC.Generics
 newtype PhysObjT m a = PhysObjT { unPOT :: WriterT SF (MaybeT (VarsT m)) a }
   deriving
     ( Generic, Functor, Applicative, Monad
-    , MonadWriter SF, MonadIO, MonadThrow, MonadCatch
+    , MonadWriter SF, MonadIO, MonadThrow, MonadCatch, Show1, Show
     )
 
 instance MonadTrans PhysObjT where
