@@ -23,6 +23,7 @@ import           Control.Foldl             (FoldM (..))
 import qualified Control.Foldl             as F
 import           Control.Lens
 import           Control.Monad.Fail        as MF
+import           Control.Monad.Morph
 import           Data.HEP.LorentzVector
 import           Data.Hist
 import qualified Data.Histogram.Generic    as G
@@ -35,8 +36,8 @@ import           Text.Regex.Base.RegexLike
 import           Text.Regex.Posix.String
 
 
-type Fill a = FoldM Vars (PhysObj a) YodaObj
-type Fills a = FoldM Vars (PhysObj a) (Folder YodaObj)
+type Fill m a = Monad m => FoldM (VarsT m) (PhysObj a) YodaObj
+type Fills m a = Monad m => FoldM (VarsT m) (PhysObj a) (Folder YodaObj)
 
 
 prebind :: Monad m => (c -> m a) -> FoldM m' (m a) b -> FoldM m' (m c) b
@@ -65,59 +66,59 @@ hEmpty b =
   in G.histogramUO b uo v
 
 hist1DDef
-  :: (BinValue b ~ Double, IntervalBin b)
-  => b -> T.Text -> T.Text -> Fill Double
+  :: (BinValue b ~ Double, IntervalBin b, Monad m)
+  => b -> T.Text -> T.Text -> Fill m Double
 hist1DDef b xt yt =
   Annotated [("XLabel", xt), ("YLabel", yt)]
   . H1DD
   . over bins toArbBin
-  <$> hfill =$<< runPhysObj
+  <$> hFill =$<< hoist generalize . runPhysObj
 
   where
-    hfill =
+    hFill =
       hEmpty b
       & F.generalize . F.handles _Just . hist1DFill
 
 
 hist2DDef
-  :: (BinValue b ~ Double, IntervalBin b)
-  => b -> b -> T.Text -> T.Text -> Fill (Double, Double)
+  :: (BinValue b ~ Double, IntervalBin b, Monad m)
+  => b -> b -> T.Text -> T.Text -> Fill m (Double, Double)
 hist2DDef bx by xt yt =
   Annotated [("XLabel", xt), ("YLabel", yt)]
   . H2DD
   . over bins (fmapBinX toArbBin)
   . over bins (fmapBinY toArbBin)
-  <$> hfill =$<< runPhysObj
+  <$> hFill =$<< hoist generalize . runPhysObj
 
   where
-    hfill =
+    hFill =
       hEmpty (Bin2D bx by)
       & F.generalize . F.handles _Just . hist2DFill
 
 
 prof1DDef
-  :: (BinValue b ~ Double, IntervalBin b)
-  => b -> T.Text -> T.Text -> Fill (Double, Double)
+  :: (BinValue b ~ Double, IntervalBin b, Monad m)
+  => b -> T.Text -> T.Text -> Fill m (Double, Double)
 prof1DDef b xt yt =
   Annotated [("XLabel", xt), ("YLabel", yt)]
   . P1DD
   . over bins toArbBin
-  <$> hfill =$<< runPhysObj
+  <$> hFill =$<< hoist generalize . runPhysObj
 
   where
-    hfill =
+    hFill =
       hEmpty b
       & F.generalize . F.handles _Just . prof1DFill
 
 
-nH :: Foldable t => Int -> Fills (t a)
+nH :: Foldable t => Int -> Fills m (t a)
 nH n =
   singleton "/n"
   <$> hist1DDef (binD 0 n (fromIntegral n)) "$n$" (dndx "n" "1")
   <$= fromIntegral . length
 
 
-ptH :: HasLorentzVector a => Fills a
+ptH :: HasLorentzVector a => Fills m a
 ptH =
   singleton "/pt"
   <$> hist1DDef
@@ -126,13 +127,13 @@ ptH =
       (dndx pt gev)
   <$= view lvPt
 
-etaH :: HasLorentzVector a => Fills a
+etaH :: HasLorentzVector a => Fills m a
 etaH =
   singleton "/eta"
   <$> hist1DDef (binD (-3) 39 3) "$\\eta$" (dndx "\\eta" "{\\mathrm rad}")
   <$= view lvEta
 
-lvHs :: HasLorentzVector a => Fills a
+lvHs :: HasLorentzVector a => Fills m a
 lvHs = ptH `mappend` etaH
 
 cut :: MonadFail m => (a -> m Bool) -> a -> m a
