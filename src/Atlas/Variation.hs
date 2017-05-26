@@ -25,6 +25,7 @@ import           GHC.Exts
 import           GHC.Generics
 import           Prelude                 hiding (lookup)
 
+
 type VarsT = VariationT (StrictMap T.Text)
 type Vars = VarsT Identity
 
@@ -115,9 +116,9 @@ instance Ord k => Ixed (StrictMap k a) where
   {-# INLINE ix #-}
 
 instance Ord k => Apply (StrictMap k) where
-  (<.>) = liftSM2 $ M.intersectionWith id
-  (<. ) = liftSM2 $ M.intersectionWith const
-  ( .>) = liftSM2 $ M.intersectionWith (const id)
+  (<.>) = intersectionWith id
+  (<. ) = intersectionWith const
+  ( .>) = intersectionWith (const id)
 
 instance Ord k => Bind (StrictMap k) where
   m >>- f = mapMaybeWithKey (\k -> lookup k . f) m
