@@ -43,27 +43,33 @@ type Fills m a = Monad m => FoldM (VarsT m) (PhysObj a) (Folder YodaObj)
 prebind :: Monad m => (c -> m a) -> FoldM m' (m a) b -> FoldM m' (m c) b
 prebind g = F.premapM (>>= g)
 
+
 bindF :: Monad m => FoldM m a b -> (c -> m a) -> FoldM m c b
 bindF (FoldM comb start done) f = FoldM comb' start done
   where
     comb' x c = comb x =<< f c
 
+
 bindF' :: Monad m => (c -> m a) -> FoldM m a b -> FoldM m c b
 bindF' = flip bindF
+
 
 infixl 2 =$<<
 (=$<<) :: Monad m => FoldM m a b -> (c -> m a) -> FoldM m c b
 (=$<<) = bindF
 
+
 infixl 2 <$=
 (<$=) :: Functor f => FoldM m (f c) b -> (a -> c) -> FoldM m (f a) b
 h <$= f = F.premapM (fmap f) h
+
 
 hEmpty :: (Bin bin, Monoid a) => bin -> Histogram V.Vector bin a
 hEmpty b =
   let v = V.replicate (nBins b) mempty
       uo = Just (mempty, mempty)
   in G.histogramUO b uo v
+
 
 hist1DDef
   :: (BinValue b ~ Double, IntervalBin b, Monad m)

@@ -75,7 +75,6 @@ intersectionWith f = liftSM2 $ M.intersectionWith f
 instance Functor (StrictMap k) where
   fmap f (SM m) = SM $ M.map f m
 
-
 instance Foldable (StrictMap k) where
   foldMap f (SM m) = M.foldMapWithKey (const f) m
 
