@@ -47,7 +47,7 @@ newtype StrictMap k a = SM { unSM :: M.Map k a }
 strictMap :: M.Map k a -> StrictMap k a
 strictMap = SM . force
   where
-    force m = let m' = foldMap (`seq` ()) m `seq` m in m'
+    force m = M.foldl' (flip seq) () m `seq` m
 
 instance (Ord k, Serialize k, Serialize a) => Serialize (StrictMap k a) where
 
@@ -73,7 +73,7 @@ mapMaybeWithKey f (SM m) = SM $ M.mapMaybeWithKey f m
 intersectionWith
   :: Ord k
   => (a1 -> b -> a) -> StrictMap k a1 -> StrictMap k b -> StrictMap k a
-intersectionWith f = liftSM2 $ M.intersectionWith f
+intersectionWith f (SM m) (SM m') = SM $ M.intersectionWith f m m'
 
 instance Functor (StrictMap k) where
   fmap f (SM m) = SM $ M.map f m

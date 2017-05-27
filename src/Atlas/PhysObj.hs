@@ -7,6 +7,7 @@ module Atlas.PhysObj where
 
 import           Atlas.Corrected
 import           Atlas.Variation
+import           Control.DeepSeq
 import           Control.Monad.Catch
 import           Control.Monad.Morph
 import           Control.Monad.Trans.Maybe
