@@ -7,7 +7,7 @@ module Atlas.Variation
   ( module X
   , VarsT, Vars
   , variationToMap, mapToVariation
-  , StrictMap, strictMap, unSM
+  , StrictMap, strictMap, unSM, liftSM, liftSM2
   , lookup, intersectionWith, mapMaybeWithKey
   ) where
 
@@ -45,7 +45,9 @@ newtype StrictMap k a = SM { unSM :: M.Map k a }
   deriving (Show, Eq, Ord, Data, Typeable, Generic, Show1)
 
 strictMap :: M.Map k a -> StrictMap k a
-strictMap = SM
+strictMap = SM . force
+  where
+    force m = let m' = foldMap (`seq` ()) m `seq` m in m'
 
 instance (Ord k, Serialize k, Serialize a) => Serialize (StrictMap k a) where
 
@@ -53,20 +55,20 @@ inSM :: (M.Map t1 t2 -> t) -> StrictMap t1 t2 -> t
 inSM f (SM m) = f m
 
 liftSM :: (M.Map k1 a1 -> M.Map k a) -> StrictMap k1 a1 -> StrictMap k a
-liftSM f = SM . f . unSM
+liftSM f = strictMap . f . unSM
 
 liftSM2
   :: (M.Map t2 t3 -> M.Map t t1 -> M.Map k a)
   -> StrictMap t2 t3
   -> StrictMap t t1
   -> StrictMap k a
-liftSM2 f (SM sm) (SM sm') = SM $ f sm sm'
+liftSM2 f (SM sm) (SM sm') = strictMap $ f sm sm'
 
 lookup :: Ord k => k -> StrictMap k a -> Maybe a
 lookup k = inSM (M.lookup k)
 
 mapMaybeWithKey :: (k -> a1 -> Maybe a) -> StrictMap k a1 -> StrictMap k a
-mapMaybeWithKey f = liftSM (M.mapMaybeWithKey f)
+mapMaybeWithKey f (SM m) = SM $ M.mapMaybeWithKey f m
 
 intersectionWith
   :: Ord k
@@ -83,7 +85,7 @@ instance Traversable (StrictMap k) where
   traverse f (SM m) = SM <$> M.traverseWithKey (const f) m
 
 instance Ord k => Semigroup (StrictMap k a) where
-  (<>) = liftSM2 M.union
+  SM m <> SM m' = SM $ M.union m m'
 
 instance Ord k => Monoid (StrictMap k a) where
   mempty = SM M.empty
