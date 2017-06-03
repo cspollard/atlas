@@ -7,42 +7,34 @@ module Atlas.PhysObj where
 
 import           Atlas.Corrected
 import           Atlas.Variation
-import           Control.DeepSeq
-import           Control.Monad.Catch
-import           Control.Monad.Morph
+import qualified Control.Monad.Fail        as MF
 import           Control.Monad.Trans.Maybe
 import           Data.Functor.Classes
-import           Data.Functor.Identity
 import           GHC.Generics
 
 -- TODO
 -- add ReaderT DataMC'
 
-newtype PhysObjT m a = PhysObjT { unPOT :: WriterT SF (MaybeT (VarsT m)) a }
-  deriving
-    ( Generic, Functor, Applicative, Monad
-    , MonadWriter SF, MonadIO, MonadThrow, MonadCatch, Show1, Show
-    )
-
-instance MonadTrans PhysObjT where
-  lift = PhysObjT . lift . lift . lift
-
-instance MFunctor PhysObjT where
-  hoist f = PhysObjT . hoist (hoist $ hoist f) . unPOT
-
-type PhysObj = PhysObjT Identity
+newtype PhysObj a = PhysObj { unPOT :: WriterT SF (MaybeT Vars) a }
+  deriving (Generic, Functor, Applicative, Monad, MonadWriter SF, Show1, Show)
 
 
-runPhysObj :: Functor m => PhysObjT m a -> VarsT m (Maybe (a, Double))
+instance MF.MonadFail PhysObj where
+  fail _ = PhysObj . WriterT . MaybeT $ return Nothing
+
+
+runPhysObj :: PhysObj a -> Vars (Maybe (a, Double))
 runPhysObj = (fmap.fmap.fmap) runSF . runMaybeT . runWriterT . unPOT
 
+runPhysObj' :: PhysObj a -> Vars (Maybe (a, SF))
+runPhysObj' = runMaybeT . runWriterT . unPOT
 
-varSF :: Functor m => VarsT m SF -> PhysObjT m ()
+
+varSF :: Vars SF -> PhysObj ()
 varSF sfs =
-  -- MaybeT Vars (a, SF)
-  PhysObjT . WriterT . MaybeT
-  -- Vars (Maybe (a, SF))
+  PhysObj . WriterT . MaybeT
   $ Just . ((),) <$> sfs
 
-varObj :: Functor m => VarsT m a -> PhysObjT m a
-varObj xs = PhysObjT . WriterT . MaybeT $ Just . (,mempty) <$> xs
+
+varObj :: Vars a -> PhysObj a
+varObj xs = PhysObj . WriterT . MaybeT $ Just . (,mempty) <$> xs

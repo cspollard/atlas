@@ -5,9 +5,10 @@
 
 module Atlas.Variation
   ( module X
-  , VarsT, Vars
+  , Vars
   , variationToMap, mapToVariation
   , StrictMap, strictMap, unSM, liftSM, liftSM2
+  , inSM
   , lookup, intersectionWith, mapMaybeWithKey
   ) where
 
@@ -26,19 +27,15 @@ import           GHC.Generics
 import           Prelude                 hiding (lookup)
 
 
-type VarsT = VariationT (StrictMap T.Text)
-type Vars = VarsT Identity
+type Vars = Variation (StrictMap T.Text)
 
 variationToMap :: Ord k => k -> Variation (StrictMap k) a -> StrictMap k a
-variationToMap k v = runIdentity $ do
-  vs <- getVariations v
-  n <- getNominal v
-  return $ vs & at k ?~ n
+variationToMap k (Variation x xs) = xs & at k ?~ x
 
 mapToVariation :: Ord k => k -> StrictMap k a -> Maybe (Variation (StrictMap k) a)
 mapToVariation k m = do
   n <- m ^? ix k
-  return . variation n $ sans k m
+  return . Variation n $ sans k m
 
 
 newtype StrictMap k a = SM { unSM :: M.Map k a }
@@ -108,14 +105,12 @@ instance Ord k => At (StrictMap k a) where
       Nothing -> maybe (SM m) (const (SM $ M.delete k m)) mv
       Just v' -> SM $ M.insert k v' m
     where mv = M.lookup k m
-  {-# INLINE at #-}
 
 instance Ord k => Ixed (StrictMap k a) where
   ix k f (SM m) =
     case M.lookup k m of
      Just v  -> f v <&> \v' -> SM (M.insert k v' m)
      Nothing -> pure $ SM m
-  {-# INLINE ix #-}
 
 instance Ord k => Apply (StrictMap k) where
   (<.>) = intersectionWith id
