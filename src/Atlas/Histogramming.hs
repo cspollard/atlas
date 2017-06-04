@@ -61,7 +61,7 @@ apF (F.Fold comb start done) = F.Fold comb' start' done'
     done' = fmap done
 
 
-physObjH :: F.Fold (a, Double) b -> F.Fold (PhysObj a) (Vars b)
+physObjH :: Foldl (a, Double) b -> Foldl (PhysObj a) (Vars b)
 physObjH h = lmap runPhysObj . apF $ F.handles _Just h
 
 
@@ -138,24 +138,22 @@ nH n =
   <$= first (fromIntegral . length)
 
 
-ptH :: HasLorentzVector a => Foldl (PhysObj a) (Vars YodaObj)
+ptH :: HasLorentzVector a => Foldl (a, Double) YodaObj
 ptH =
-  physObjH
-  $ hist1DDef
+  hist1DDef
     (logBinD 20 25 500) -- :: TransformedBin BinD (Log10BT Double))
     "$p_{\\mathrm T}$ [GeV]"
     (dndx pt gev)
     <$= first (view lvPt)
 
 
-etaH :: HasLorentzVector a => Foldl (PhysObj a) (Vars YodaObj)
+etaH :: HasLorentzVector a => Foldl (a, Double) YodaObj
 etaH =
-  physObjH
-  $ hist1DDef (binD (-3) 39 3) "$\\eta$" (dndx "\\eta" "{\\mathrm rad}")
+  hist1DDef (binD (-3) 39 3) "$\\eta$" (dndx "\\eta" "{\\mathrm rad}")
     <$= first (view lvEta)
 
 
-lvHs :: HasLorentzVector a => Fills a
+lvHs :: HasLorentzVector a => Foldl (a, Double) (Folder YodaObj)
 lvHs =
   mconcat
     [ singleton "/pt" <$> ptH

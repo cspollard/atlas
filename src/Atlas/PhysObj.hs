@@ -1,5 +1,7 @@
+{-# LANGUAGE DeriveFoldable             #-}
 {-# LANGUAGE DeriveFunctor              #-}
 {-# LANGUAGE DeriveGeneric              #-}
+{-# LANGUAGE DeriveTraversable          #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TupleSections              #-}
 
@@ -16,7 +18,9 @@ import           GHC.Generics
 -- add ReaderT DataMC'
 
 newtype PhysObj a = PhysObj { unPOT :: WriterT SF (MaybeT Vars) a }
-  deriving (Generic, Functor, Applicative, Monad, MonadWriter SF, Show1, Show)
+  deriving
+    ( Generic, Functor, Applicative, Monad, MonadWriter SF
+    , Foldable, Traversable, Show1, Show )
 
 
 instance MF.MonadFail PhysObj where
@@ -25,6 +29,7 @@ instance MF.MonadFail PhysObj where
 
 runPhysObj :: PhysObj a -> Vars (Maybe (a, Double))
 runPhysObj = (fmap.fmap.fmap) runSF . runMaybeT . runWriterT . unPOT
+
 
 runPhysObj' :: PhysObj a -> Vars (Maybe (a, SF))
 runPhysObj' = runMaybeT . runWriterT . unPOT
