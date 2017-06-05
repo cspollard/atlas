@@ -38,6 +38,7 @@ library
                      , exceptions == 0.8.*
                      , contravariant == 1.4.*
                      , profunctors == 5.2.*
+                     , bifunctors == 5.4.*
                      , deepseq == 1.4.*
                      , transformers == 0.5.*
                      , foldl == 1.2.*

@@ -13,7 +13,7 @@ module Atlas.Histogramming
   , mev, gev, rad, pt
   , channel, channelWithLabel, channelsWithLabels
   , hEmpty, hist1DDef, prof1DDef, hist2DDef
-  , nH, ptH, etaH, lvHs
+  , nH, ptH, etaH, lvHs, lvsHs
   , (=$<<), (<$=), prebind
   , physObjH
   -- , filterFolder, matchRegex
@@ -26,6 +26,7 @@ import qualified Control.Foldl          as F
 import           Control.Lens
 import           Control.Monad.Fail     as MF
 import           Data.Bifunctor
+import           Data.Bitraversable
 import           Data.HEP.LorentzVector
 import           Data.Hist
 import qualified Data.Histogram.Generic as G
@@ -159,6 +160,18 @@ lvHs =
     [ singleton "/pt" <$> ptH
     , singleton "/eta" <$> etaH
     ]
+
+lvsHs
+  :: (Foldable f, Applicative f, HasLorentzVector a)
+  => Foldl (PhysObj (f a)) (Folder (Vars YodaObj))
+lvsHs =
+  mconcat
+  [ fmap (singleton "/pt") . physObjH
+    $ F.handles folded ptH <$= bitraverse id pure
+  , fmap (singleton "/eta") . physObjH
+    $ F.handles folded etaH <$= bitraverse id pure
+  ]
+
 
 
 dsigdXpbY :: T.Text -> T.Text -> T.Text
