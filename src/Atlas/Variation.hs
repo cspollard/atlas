@@ -5,7 +5,7 @@
 
 module Atlas.Variation
   ( module X
-  , Vars
+  , Vars, VarMap
   , variationToMap, mapToVariation
   , StrictMap, strictMap, unSM, liftSM, liftSM2
   , inSM
@@ -27,7 +27,8 @@ import           GHC.Generics
 import           Prelude                 hiding (lookup)
 
 
-type Vars = Variation (StrictMap T.Text)
+type VarMap = StrictMap T.Text
+type Vars = Variation VarMap
 
 variationToMap :: Ord k => k -> Variation (StrictMap k) a -> StrictMap k a
 variationToMap k (Variation x xs) = xs & at k ?~ x

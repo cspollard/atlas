@@ -41,6 +41,8 @@ library
                      , bifunctors == 5.4.*
                      , deepseq == 1.4.*
                      , transformers == 0.5.*
+                     , these == 0.7.*
+                     , keys == 3.11.*
                      , foldl == 1.2.*
                      , bytestring == 0.10.*
                      , text == 1.2.*

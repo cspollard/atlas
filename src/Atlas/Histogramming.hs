@@ -15,7 +15,7 @@ module Atlas.Histogramming
   , hEmpty, hist1DDef, prof1DDef, hist2DDef
   , nH, ptH, etaH, lvHs, lvsHs
   , (=$<<), (<$=), prebind
-  , physObjH
+  , physObjH, foldedH
   -- , filterFolder, matchRegex
   ) where
 
@@ -24,7 +24,6 @@ import           Atlas.Variation
 import           Control.Foldl          (FoldM (..))
 import qualified Control.Foldl          as F
 import           Control.Lens
-import           Control.Monad.Fail     as MF
 import           Data.Bifunctor
 import           Data.Bitraversable
 import           Data.HEP.LorentzVector
@@ -32,6 +31,7 @@ import           Data.Hist
 import qualified Data.Histogram.Generic as G
 import           Data.Semigroup
 import qualified Data.Text              as T
+import           Data.Tuple             (swap)
 import qualified Data.Vector            as V
 import           Data.YODA.Obj
 
@@ -63,7 +63,16 @@ apF (F.Fold comb start done) = F.Fold comb' start' done'
 
 
 physObjH :: Foldl (a, Double) b -> Foldl (PhysObj a) (Vars b)
-physObjH h = lmap runPhysObj . apF $ F.handles _Just h
+physObjH = lmap runPhysObj . apF . F.premap go . F.handles _Just
+  where
+    go :: These Double a -> Maybe (a, Double)
+    go = fmap swap . sequence . fromThese 1.0 Nothing . fmap Just
+
+
+foldedH
+  :: (Foldable f, Applicative f, Bitraversable t)
+  => Foldl (t c d) c1 -> Foldl (t (f c) d) c1
+foldedH f = F.handles folded f <$= bitraverse id pure
 
 
 hEmpty :: (Bin bin, Monoid a) => bin -> Histogram V.Vector bin a
@@ -104,18 +113,20 @@ prof1DDef b xt yt =
   <$> prof1DFill (hEmpty b)
 
 
-cut :: MonadFail m => (a -> m Bool) -> a -> m a
+cut :: (Monoid c, MonadChronicle c m) => (a -> m Bool) -> a -> m a
 cut c o = do
   p <- c o
-  if p then return o else MF.fail "fail cut"
+  if p then return o else confess mempty
 
 
-channel :: MonadFail m => (a -> m Bool) -> Foldl (m a) r -> Foldl (m a) r
+channel
+  :: (Monoid c, MonadChronicle c m)
+  => (a -> m Bool) -> Foldl (m a) r -> Foldl (m a) r
 channel c = prebind (cut c)
 
 
 channelWithLabel
-  :: MonadFail m
+  :: (Monoid c, MonadChronicle c m)
   => T.Text
   -> (a -> m Bool)
   -> Foldl (m a) (Folder b)
@@ -124,7 +135,7 @@ channelWithLabel n f = fmap (prefixF n) . channel f
 
 
 channelsWithLabels
-  :: (MonadFail m, Semigroup b)
+  :: (Monoid c, MonadChronicle c m, Semigroup b)
   => [(T.Text, a -> m Bool)]
   -> Foldl (m a) (Folder b)
   -> Foldl (m a) (Folder b)
@@ -154,16 +165,17 @@ etaH =
     <$= first (view lvEta)
 
 
-lvHs :: HasLorentzVector a => Foldl (a, Double) (Folder YodaObj)
+lvHs :: HasLorentzVector a => Fills a
 lvHs =
   mconcat
-    [ singleton "/pt" <$> ptH
-    , singleton "/eta" <$> etaH
+    [ singleton "/pt" <$> physObjH ptH
+    , singleton "/eta" <$> physObjH etaH
     ]
+
 
 lvsHs
   :: (Foldable f, Applicative f, HasLorentzVector a)
-  => Foldl (PhysObj (f a)) (Folder (Vars YodaObj))
+  => Fills (f a)
 lvsHs =
   mconcat
   [ fmap (singleton "/pt") . physObjH
@@ -171,7 +183,6 @@ lvsHs =
   , fmap (singleton "/eta") . physObjH
     $ F.handles folded etaH <$= bitraverse id pure
   ]
-
 
 
 dsigdXpbY :: T.Text -> T.Text -> T.Text
@@ -189,10 +200,6 @@ rad = "\\mathrm{rad}"
 pt = "p_{\\mathrm{T}}"
 
 
---
---
--- --
--- --
 -- -- innerF :: Monad m => (a -> m b) -> Foldl (m b) c -> Foldl (m a) c
 -- -- innerF g = F.premap (g =<<)
 -- --
@@ -214,8 +221,3 @@ pt = "p_{\\mathrm{T}}"
 -- --   -- Foldl (Maybe (a, Double)) c
 -- --   . F.handles folded
 -- --   -- Foldl (a, Double) c
---
---
---
--- --
--- --
