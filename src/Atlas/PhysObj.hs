@@ -86,8 +86,7 @@ runPhysObj' = runChronicleT . unPO
 
 
 varSF :: Vars SF -> PhysObj ()
-varSF sfs = PhysObj . ChronicleT $ This <$> sfs
-
+varSF sfs = PhysObj . ChronicleT $ flip These () <$> sfs
 
 varObj :: Vars a -> PhysObj a
 varObj xs = PhysObj . ChronicleT $ That <$> xs

@@ -63,7 +63,7 @@ apF (F.Fold comb start done) = F.Fold comb' start' done'
 
 
 physObjH :: Foldl (a, Double) b -> Foldl (PhysObj a) (Vars b)
-physObjH = lmap runPhysObj . apF . F.premap go . F.handles _Just
+physObjH = lmap runPhysObj . apF . lmap go . F.handles _Just
   where
     go :: These Double a -> Maybe (a, Double)
     go = fmap swap . sequence . fromThese 1.0 Nothing . fmap Just
@@ -212,12 +212,3 @@ pt = "p_{\\mathrm{T}}"
 -- -- --
 -- -- -- outer :: Applicative m => (a -> m b) -> Foldl b c -> Foldl a (m c)
 -- -- -- outer g = F.premap g . liftFA
--- --
--- -- pohelper :: Foldl (a, Double) c -> Foldl (PhysObj a) (Vars c)
--- -- pohelper =
--- --   F.premap runPhysObj
--- --   -- Foldl (Vars (Maybe (a, Double))) (Vars c)
--- --   . apF
--- --   -- Foldl (Maybe (a, Double)) c
--- --   . F.handles folded
--- --   -- Foldl (a, Double) c
