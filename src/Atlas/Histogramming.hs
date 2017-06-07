@@ -14,7 +14,7 @@ module Atlas.Histogramming
   , channel, channelWithLabel, channelsWithLabels
   , hEmpty, hist1DDef, prof1DDef, hist2DDef
   , nH, ptH, etaH, lvHs, lvsHs
-  , (=$<<), (<$=), prebind
+  , (=$<<), (<$=), prebind, liftAF
   , physObjH, foldedH
   -- , filterFolder, matchRegex
   ) where
@@ -54,16 +54,17 @@ infixl 2 <$=
 h <$= f = lmap f h
 
 
-apF :: Applicative m => Foldl b c -> Foldl (m b) (m c)
-apF (F.Fold comb start done) = F.Fold comb' start' done'
+liftAF :: Applicative m => Foldl b c -> Foldl (m b) (m c)
+liftAF (F.Fold comb start done) = F.Fold comb' start' done'
   where
     start' = pure start
     comb' xs x = comb <$> xs <*> x
     done' = fmap done
 
 
+
 physObjH :: Foldl (a, Double) b -> Foldl (PhysObj a) (Vars b)
-physObjH = lmap runPhysObj . apF . lmap go . F.handles _Just
+physObjH = lmap runPhysObj . liftAF . lmap go . F.handles _Just
   where
     go :: These Double a -> Maybe (a, Double)
     go = fmap swap . sequence . fromThese 1.0 Nothing . fmap Just
