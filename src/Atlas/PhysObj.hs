@@ -25,6 +25,9 @@ import           GHC.Generics
 -- add ReaderT DataMC'
 
 
+-- TODO
+-- go back to WriterT SF (MaybeT Vars) a?
+-- which yields Vars (Maybe (a, SF))
 newtype PhysObj a = PhysObj { unPO :: ChronicleT SF Vars a }
   deriving
     (Generic, Functor, Applicative, Monad, Alternative, MonadChronicle SF)
