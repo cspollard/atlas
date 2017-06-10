@@ -17,9 +17,9 @@ import           Data.Data
 import           Data.Functor.Bind.Class
 import           Data.Functor.Classes
 import qualified Data.Map.Strict         as M
+import           Data.Monoid1
 import           Data.Semigroup
 import           Data.Serialize
-import           Data.SMonoid
 import qualified Data.Text               as T
 import           Data.Variation          as X
 import           GHC.Exts
@@ -40,7 +40,7 @@ mapToVariation k m = do
 
 
 newtype StrictMap k a = SM { unSM :: M.Map k a }
-  deriving (Show, Eq, Ord, Data, Typeable, Generic, Show1)
+  deriving (Show, Eq, Ord, Data, Typeable, Generic)
 
 strictMap :: M.Map k a -> StrictMap k a
 strictMap = SM . force
@@ -89,13 +89,13 @@ instance Ord k => Monoid (StrictMap k a) where
   mempty = SM M.empty
   mappend = (<>)
 
-instance SUnit (StrictMap k) where
-  sempty = SM M.empty
+instance Unit1 (StrictMap k) where
+  empty1 = SM M.empty
 
-instance Ord k => SAppend (StrictMap k) where
-  sappend = (<>)
+instance Ord k => Append1 (StrictMap k) where
+  append1 = (<>)
 
-instance Ord k => SMonoid (StrictMap k) where
+instance Ord k => Monoid1 (StrictMap k) where
 
 type instance Index (StrictMap k a) = k
 type instance IxValue (StrictMap k a) = a
@@ -125,3 +125,14 @@ instance Ord k => IsList (StrictMap k a) where
   type Item (StrictMap k a) = (k, a)
   fromList = SM . fromList
   toList = toList . unSM
+
+
+instance Show2 StrictMap where
+  liftShowsPrec2 spk slk spv slv d (SM m) =
+    showsUnaryWith (liftShowsPrec sp sl) "fromList" d (M.toList m)
+    where
+      sp = liftShowsPrec2 spk slk spv slv
+      sl = liftShowList2 spk slk spv slv
+
+instance Show k => Show1 (StrictMap k) where
+  liftShowsPrec = liftShowsPrec2 showsPrec showList
