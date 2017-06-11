@@ -75,7 +75,6 @@ library
   hs-source-dirs:      src
   default-language:    Haskell2010
   ghc-options:         -Wall
-  ghc-prof-options:    -Wall 
 
 executable run-atlas-hadd
   main-is:             app/run-atlas-hadd.hs
@@ -96,4 +95,3 @@ executable run-atlas-hadd
 
   default-language:    Haskell2010
   ghc-options:         -Wall
-  ghc-prof-options:    -Wall -rtsopts
