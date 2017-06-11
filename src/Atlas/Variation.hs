@@ -13,17 +13,19 @@ module Atlas.Variation
   ) where
 
 import           Control.Lens
+import           Data.Align
 import           Data.Data
 import           Data.Functor.Bind.Class
 import           Data.Functor.Classes
 import qualified Data.Map.Strict         as M
-import           Data.Monoid1
 import           Data.Semigroup
 import           Data.Serialize
 import qualified Data.Text               as T
+import           Data.These
 import           Data.Variation          as X
 import           GHC.Exts
 import           GHC.Generics
+import           Linear.Matrix
 import           Prelude                 hiding (lookup)
 
 
@@ -82,20 +84,23 @@ instance Foldable (StrictMap k) where
 instance Traversable (StrictMap k) where
   traverse f (SM m) = SM <$> M.traverseWithKey (const f) m
 
+instance Ord k => Align (StrictMap k) where
+  nil = mempty
+  align (SM m) (SM m') = SM $ M.mergeWithKey f g h m m'
+    where
+      f _ a b = Just $ These a b
+      g = M.map This
+      h = M.map That
+
+instance Ord k => Trace (StrictMap k) where
+  diagonal (SM m) = SM . diagonal $ unSM <$> m
+
 instance Ord k => Semigroup (StrictMap k a) where
   SM m <> SM m' = SM $ M.union m m'
 
 instance Ord k => Monoid (StrictMap k a) where
   mempty = SM M.empty
   mappend = (<>)
-
-instance Unit1 (StrictMap k) where
-  empty1 = SM M.empty
-
-instance Ord k => Append1 (StrictMap k) where
-  append1 = (<>)
-
-instance Ord k => Monoid1 (StrictMap k) where
 
 type instance Index (StrictMap k a) = k
 type instance IxValue (StrictMap k a) = a
