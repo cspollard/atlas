@@ -13,8 +13,6 @@ import           Control.Exception          (throwIO)
 import           Control.Monad              (forever, unless)
 import           Control.Monad.State.Strict hiding (get, put)
 import qualified Data.ByteString            as BS
-import           Data.Hashable
-import qualified Data.HashMap.Strict        as HM
 import qualified Data.IntMap.Strict         as IM
 import qualified Data.Map.Strict            as M
 import           Data.Maybe                 (fromMaybe)
@@ -32,9 +30,6 @@ import           System.IO                  (IOMode (..), hFlush, stdout,
 import           Text.Regex.Base.RegexLike
 import           Text.Regex.Posix.String
 
-instance (Serialize k, Eq k, Hashable k, Serialize a) => Serialize (HM.HashMap k a) where
-  get = HM.fromList <$> get
-  put = put . HM.toList
 
 addFiles
   :: (Int, Sum Double, Folder (Vars YodaObj))

@@ -20,7 +20,7 @@ module Atlas.Histogramming
   ) where
 
 import           Atlas.PhysObj
-import           Atlas.Variation
+import           Atlas.Variation hiding (singleton)
 import           Control.Foldl          (FoldM (..))
 import qualified Control.Foldl          as F
 import           Control.Lens

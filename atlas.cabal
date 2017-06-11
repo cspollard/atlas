@@ -23,7 +23,7 @@ library
                      , Atlas.Histogramming
                      , Atlas.ProcessInfo
                      , Atlas.Variation
-                     , Atlas.Corrected
+                     , Atlas.ScaleFactor
                      , Atlas.PhysObj
                      , Atlas.ToYoda
                      , Atlas.Streaming

@@ -9,25 +9,23 @@ module Atlas.PhysObj
   , module X
   ) where
 
-import           Atlas.Corrected
+import           Atlas.ScaleFactor
 import           Atlas.Variation
 import           Control.Applicative
 import           Control.Lens
 import           Control.Monad.Chronicle as X
 import           Data.Align              as X
-import qualified Data.HashMap.Strict     as HM
 import           Data.Key
 import qualified Data.Text               as T
 import           Data.These              as X
 import           GHC.Generics
 
 -- TODO
--- add ReaderT DataMC'
-
+-- add ReaderT DataMC'?
 
 -- TODO
--- go back to WriterT SF (MaybeT Vars) a?
--- which yields Vars (Maybe (a, SF))
+-- go back to MaybeT (WriterT SF Vars) a?
+-- which yields Vars (Maybe a, SF)
 newtype PhysObj a = PhysObj { unPO :: ChronicleT SF Vars a }
   deriving
     (Generic, Functor, Applicative, Monad, Alternative, MonadChronicle SF)
@@ -62,12 +60,10 @@ instance Crosswalk PhysObj where
             x' = sequenceL x
         in alignWith h x' xs'
 
-      -- VarMap (f (These SF b)) -> f (VarMap (These SF b))
-
       g :: T.Text -> These (These SF b) (VarMap (These SF b)) -> VarMap (These SF b)
-      g k (This x)     = HM.singleton k x
-      g k (That xs)    = HM.singleton k emptyThese `mappend` xs
-      g k (These x xs) = HM.singleton k x `mappend` xs
+      g k (This x)     = singleton k x
+      g k (That xs)    = singleton k emptyThese `mappend` xs
+      g k (These x xs) = singleton k x `mappend` xs
 
       h :: These (These SF b) (VarMap (These SF b)) -> Vars (These SF b)
       h = uncurry Variation . fromThese emptyThese emptyVarMap
