@@ -3,14 +3,14 @@ extra-package-dbs: []
 packages:
 - '.'
 - location:
-    git: git@github.com:cspollard/histogram-extras.git
+    git: https://github.com/cspollard/histogram-extras.git
     commit: a3fbd13a7c634fdc6b6c47d738b3af2c736af873
 - location:
-    git: git@github.com:cspollard/variation.git
+    git: https://github.com/cspollard/variation.git
     commit: 33902eebf0d5812d10780a645a04896d2517d4a1
 
 - location:
-    git: git@github.com:cspollard/hhep.git
+    git: https://github.com/cspollard/hhep.git
     commit: 7613d75caf56aafd327e8304a71d372fb1a6b187
 
 extra-deps:
