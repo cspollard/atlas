@@ -15,6 +15,8 @@ build-type:          Simple
 -- extra-source-files:
 cabal-version:       >=1.10
 
+tested-with: GHC == 8.0.1, GHC == 8.0.2
+
 library
   exposed-modules:     Atlas.CrossSections
                      , Atlas.DataMC
@@ -48,6 +50,8 @@ library
                      , text == 1.2.*
                      , linear == 1.20.*
                      , containers == 0.5.*
+                     , unordered-containers == 0.2.*
+                     , hashable == 1.2.*
                      , attoparsec == 0.13.*
                      , cereal == 0.5.*
                      , vector == 0.11.*

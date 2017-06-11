@@ -15,8 +15,8 @@ import           Control.Applicative
 import           Control.Lens
 import           Control.Monad.Chronicle as X
 import           Data.Align              as X
+import qualified Data.HashMap.Strict     as HM
 import           Data.Key
-import qualified Data.Map.Strict         as M
 import qualified Data.Text               as T
 import           Data.These              as X
 import           GHC.Generics
@@ -57,7 +57,6 @@ instance Crosswalk PhysObj where
         let xs' :: f (VarMap (These SF b))
             xs' =
               foldrWithKey (\k y ys -> alignWith (g k) y ys) nil
-              . unSM
               $ sequenceL <$> xs
             x' :: f (These SF b)
             x' = sequenceL x
@@ -66,9 +65,9 @@ instance Crosswalk PhysObj where
       -- VarMap (f (These SF b)) -> f (VarMap (These SF b))
 
       g :: T.Text -> These (These SF b) (VarMap (These SF b)) -> VarMap (These SF b)
-      g k (This x)     = strictMap $ M.singleton k x
-      g k (That xs)    = strictMap (M.singleton k emptyThese) `mappend` xs
-      g k (These x xs) = strictMap (M.singleton k x) `mappend` xs
+      g k (This x)     = HM.singleton k x
+      g k (That xs)    = HM.singleton k emptyThese `mappend` xs
+      g k (These x xs) = HM.singleton k x `mappend` xs
 
       h :: These (These SF b) (VarMap (These SF b)) -> Vars (These SF b)
       h = uncurry Variation . fromThese emptyThese emptyVarMap
