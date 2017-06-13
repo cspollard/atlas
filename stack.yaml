@@ -4,7 +4,7 @@ packages:
 - '.'
 - location:
     git: https://github.com/cspollard/histogram-extras.git
-    commit: a3fbd13a7c634fdc6b6c47d738b3af2c736af873
+    commit: 853d39145758abb6877c8733b4d78422da0d6d8f
   extra-dep: true
 
 - location:
@@ -14,7 +14,7 @@ packages:
 
 - location:
     git: https://github.com/cspollard/hhep.git
-    commit: 7613d75caf56aafd327e8304a71d372fb1a6b187
+    commit: 2aae98b10e637f6c52a2b73b6725d7c54cc69942
   extra-dep: true
 
 extra-deps:
