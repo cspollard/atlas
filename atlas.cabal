@@ -68,7 +68,7 @@ library
                      , streaming-commons == 0.1.*
                      , variation == 0.2.*
                      , histogram-fill == 0.8.*
-                     , hhep == 0.2.*
+                     , hhep == 0.3.*
                      , histogram-extras == 0.2.*
                      , semigroupoids == 5.1.*
 
