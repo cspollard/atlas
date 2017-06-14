@@ -19,8 +19,10 @@ module Atlas.Histogramming
   -- , filterFolder, matchRegex
   ) where
 
+
 import           Atlas.PhysObj
-import           Atlas.Variation hiding (singleton)
+import           Atlas.Variation        hiding (singleton)
+import           Control.Applicative
 import           Control.Foldl          (FoldM (..))
 import qualified Control.Foldl          as F
 import           Control.Lens
@@ -114,20 +116,20 @@ prof1DDef b xt yt =
   <$> prof1DFill (hEmpty b)
 
 
-cut :: (Monoid c, MonadChronicle c m) => (a -> m Bool) -> a -> m a
+cut :: (Alternative m, Monad m) => (a -> m Bool) -> a -> m ()
 cut c o = do
   p <- c o
-  if p then return o else confess mempty
+  guard p
 
 
 channel
-  :: (Monoid c, MonadChronicle c m)
+  :: (Alternative m, Monad m)
   => (a -> m Bool) -> Foldl (m a) r -> Foldl (m a) r
-channel c = prebind (cut c)
+channel c = prebind (\x -> cut c x >> return x)
 
 
 channelWithLabel
-  :: (Monoid c, MonadChronicle c m)
+  :: (Alternative m, Monad m)
   => T.Text
   -> (a -> m Bool)
   -> Foldl (m a) (Folder b)
@@ -136,7 +138,7 @@ channelWithLabel n f = fmap (prefixF n) . channel f
 
 
 channelsWithLabels
-  :: (Monoid c, MonadChronicle c m, Semigroup b)
+  :: (Alternative m, Monad m, Semigroup b)
   => [(T.Text, a -> m Bool)]
   -> Foldl (m a) (Folder b)
   -> Foldl (m a) (Folder b)
