@@ -107,10 +107,10 @@ decodeFiles' rxp infs =
   $ P.mapM (decodeFile rxp) <-< P.each infs
 
   where
-    add Nothing y                  = Just y
-    add (Just (Right x)) (Right y) = Just $ addFiles x y
+    add Nothing y                  = Just $! y
+    add (Just (Right x)) (Right y) = Just $! addFiles x y
     add x@(Just (Left _)) _        = x
-    add (Just _) x@(Left _)        = Just x
+    add (Just _) x@(Left _)        = Just $! x
 
 
 

@@ -32,7 +32,8 @@ newtype PhysObj a = PhysObj { unPO :: ChronicleT SF Vars a }
 
 
 instance Show a => Show (PhysObj a) where
-  showsPrec n (PhysObj (ChronicleT v)) = showString "PhysObj " . showParen True (showsPrec n v)
+  showsPrec n (PhysObj (ChronicleT v)) =
+    showString "PhysObj " . showParen True (showsPrec n v)
 
 
 instance Foldable PhysObj where
