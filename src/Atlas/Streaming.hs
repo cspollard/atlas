@@ -21,6 +21,7 @@ import           Data.Serialize             hiding (flush)
 import           Data.Streaming.Zlib        as Z
 import qualified Data.Text                  as T
 import           Data.YODA.Obj
+import           Debug.Trace
 import           Pipes                      as P
 import qualified Pipes.ByteString           as PBS
 import qualified Pipes.Parse                as P
@@ -40,7 +41,7 @@ addFiles (i, w, f) (i', w', f')
   | otherwise =
     let w'' = w <> w'
         f'' = f <> f'
-    in w'' `seq` f'' `seq` Right (i, w'', f'')
+    in seq w'' . seq f'' $ Right (i, w'', f'')
 
 
 encodeFile :: String -> (Int, Sum Double, Folder (Vars YodaObj)) -> IO ()
@@ -63,7 +64,8 @@ decodeFile
   -> String
   -> IO (Either String (Int, Sum Double, Folder (Vars YodaObj)))
 decodeFile rxp fname = do
-  putStrLn ("decoding file " ++ fname) >> hFlush stdout
+  putStrLn ("decoding file " ++ fname)
+  hFlush stdout
   withFile fname ReadMode $ \h ->
     runEffect $ do
       mx <- deser . decompress $ PBS.fromHandle h
@@ -72,7 +74,7 @@ decodeFile rxp fname = do
           fol <-
             P.fold (flip $ uncurry M.insert) M.empty Folder
             $ P.filter filt <-< void p
-          seq fol $ return . Right $ (i, w, fol)
+          seq (trace "hello!" fol) . return . Right $ (i, w, fol)
         Nothing -> return . Left $ "failed to parse file " ++ fname
 
   where
@@ -111,8 +113,6 @@ decodeFiles' rxp infs =
     add (Just (Right x)) (Right y) = Just $! addFiles x y
     add x@(Just (Left _)) _        = x
     add (Just _) x@(Left _)        = Just $! x
-
-
 
 
 -- a lot of code taken from
