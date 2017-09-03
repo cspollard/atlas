@@ -1,13 +1,13 @@
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Atlas.CrossSections where
 
-import Control.Applicative
-import qualified Data.ByteString as BS
-import Data.Attoparsec.ByteString.Char8 hiding (isEndOfLine)
-import Data.IntMap
-import Data.Either (rights)
+import           Control.Applicative
+import           Data.Attoparsec.ByteString.Char8 hiding (isEndOfLine)
+import qualified Data.ByteString                  as BS
+import           Data.Either                      (rights)
+import           Data.IntMap
 
 isEndOfLine :: Char -> Bool
 isEndOfLine c = c == '\n' || c == '\r'
@@ -21,7 +21,7 @@ crossSectionInfo = fromList . rights <$>
         comment = char '#' *> takeTill isEndOfLine *> skipSpace
         xsecline =
             (,) <$> dsid <*> ( (,) <$> xsec <*> shower )
-                    
+
 
         dsid = decimal <* skipSpace
         xsec = (*) <$> (double <* skipSpace) <*> (double <* skipSpace)

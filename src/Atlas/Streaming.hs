@@ -21,7 +21,6 @@ import           Data.Serialize             hiding (flush)
 import           Data.Streaming.Zlib        as Z
 import qualified Data.Text                  as T
 import           Data.YODA.Obj
-import           Debug.Trace
 import           Pipes                      as P
 import qualified Pipes.ByteString           as PBS
 import qualified Pipes.Parse                as P
@@ -55,7 +54,7 @@ encodeFile fname (i, w, f) = do
         ( do
           yield (encode i)
           yield (encode w)
-          serializeP <-< P.each (M.toList $ folderToMap f)
+          serializeP <-< P.each (M.toList $ _toMap f)
         )
 
 
