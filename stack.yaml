@@ -14,10 +14,10 @@ packages:
 
 - location:
     git: https://github.com/cspollard/hhep.git
-    commit: 2aae98b10e637f6c52a2b73b6725d7c54cc69942
+    commit: 62732621d721b5522248932193a41dd7246fec01
   extra-dep: true
 
 extra-deps:
 - cereal-text-0.1.0.2
 - histogram-fill-cereal-0.6.2.0
-resolver: lts-8.17
+resolver: lts-9.0
