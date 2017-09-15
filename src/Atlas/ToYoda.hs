@@ -11,7 +11,6 @@ module Atlas.ToYoda
 
 import           Atlas
 import           Atlas.CrossSections
-import           Atlas.ProcessInfo
 import           Control.Lens
 import qualified Data.IntMap.Strict  as IM
 import           Data.Maybe          (fromMaybe)
