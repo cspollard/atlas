@@ -9,4 +9,5 @@ import           Atlas.Streaming        as X
 import           Atlas.Variation        as X hiding (singleton)
 import           Data.HEP.LorentzVector as X
 import           Data.Hist              as X
+import           Data.ProcessInfo       as X
 import           Data.YODA.Obj          as X
