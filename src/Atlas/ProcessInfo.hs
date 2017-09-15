@@ -1,28 +1,62 @@
+{-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Atlas.ProcessInfo where
-import           Data.Monoid ((<>))
-import           Data.Text   (Text)
 
-btwn :: Int -> Int -> Int -> Bool
-btwn mn mx x = mn <= x && x <= mx
+module Atlas.ProcessInfo where
+
+import           Data.Hashable
+import           Data.Monoid    ((<>))
+import           Data.Serialize
+import           Data.Text      (Text)
+import           GHC.Generics   (Generic)
+
+data Simulation = FS | AFII | DS deriving (Eq, Ord, Show, Generic)
+
+instance Serialize Simulation
+instance Hashable Simulation
+
+data ProcessInfo =
+  ProcessInfo
+  { dsid :: Int
+  , sim  :: Simulation
+  } deriving (Eq, Ord, Show, Generic)
+
+instance Serialize ProcessInfo
+instance Hashable ProcessInfo
 
 hf :: Int -> Text
-hf x = case (x `mod` 3) `compare` 1 of
-            LT -> "B"
-            EQ -> "L"
-            GT -> "C"
+hf x =
+  case x `mod` 3 of
+    0 -> "L"
+    1 -> "C"
+    2 -> "B"
 
-processTitle :: Int -> Text
-processTitle ds | ds == 0               = "data"
-                | ds == 410000          = "Pow+Py (nominal)"
-                | ds == 410001          = "Pow+Py (radHi)"
-                | ds == 410002          = "Pow+Py (radLo)"
-                | ds == 410003          = "aMC+H++"
-                | ds == 410004          = "Pow+H++"
-                | btwn 363388 363411 ds = "Zee" <> hf ds
-                | btwn 363364 363387 ds = "Zmumu" <> hf ds
-                | btwn 363102 363122 ds = "Ztautau" <> hf ds
-                | btwn 363361 363363 ds = "Ztautau" <> hf ds
-                | btwn 410147 410148 ds = "Wt"
-                | otherwise             = "other"
+
+processTitle :: ProcessInfo -> Text
+processTitle (ProcessInfo ds s) = dsToString <> simToString s
+  where
+    simToString AFII = " AFII"
+    simToString _    = ""
+
+    dsToString
+      | ds == 0               = "data"
+      | ds == 410501          = "PowPy8"
+      | ds == 410511          = "PowPy8 radHi"
+      | ds == 410512          = "PowPy8 radLo"
+      | ds == 410225          = "aMCH7"
+      | ds == 410525          = "PowH7"
+      | ds == 410252          = "Sherpa"
+      | ds == 410015          = "PowPy8 Wt"
+      | ds == 410016          = "PowPy8 Wt"
+      | ds == 410064          = "PowPy8 Wt DS"
+      | ds == 410065          = "PowPy8 Wt DS"
+      | ds == 410104          = "PowPy8 Wt radLo"
+      | ds == 410106          = "PowPy8 Wt radLo"
+      | ds == 410103          = "PowPy8 Wt radHi"
+      | ds == 410105          = "PowPy8 Wt radHi"
+      | ds == 410145          = "PowH++ Wt"
+      | ds == 410146          = "PowH++ Wt"
+      | btwn 364128 364141 ds = "Ztautau"
+      | otherwise             = "other"
+
+    btwn mn mx x = mn <= x && x <= mx

@@ -7,13 +7,14 @@ module Atlas.Streaming
   , filterFolder
   ) where
 
+import           Atlas.ProcessInfo
 import           Atlas.Variation
 import           Control.Applicative        (liftA2)
 import           Control.Exception          (throwIO)
+import           Control.Lens
 import           Control.Monad              (forever, unless)
 import           Control.Monad.State.Strict hiding (get, put)
 import qualified Data.ByteString            as BS
-import qualified Data.IntMap.Strict         as IM
 import qualified Data.Map.Strict            as M
 import           Data.Maybe                 (fromMaybe)
 import           Data.Monoid                (Sum (..), (<>))
@@ -32,9 +33,9 @@ import           Text.Regex.Posix.String
 
 
 addFiles
-  :: (Int, Sum Double, Folder (Vars YodaObj))
-  -> (Int, Sum Double, Folder (Vars YodaObj))
-  -> Either String (Int, Sum Double, Folder (Vars YodaObj))
+  :: (ProcessInfo, Sum Double, Folder (Vars YodaObj))
+  -> (ProcessInfo, Sum Double, Folder (Vars YodaObj))
+  -> Either String (ProcessInfo, Sum Double, Folder (Vars YodaObj))
 addFiles (i, w, f) (i', w', f')
   | i /= i' = Left "attempting to add two different dsids!"
   | otherwise =
@@ -43,7 +44,7 @@ addFiles (i, w, f) (i', w', f')
     in seq w'' . seq f'' $ Right (i, w'', f'')
 
 
-encodeFile :: String -> (Int, Sum Double, Folder (Vars YodaObj)) -> IO ()
+encodeFile :: String -> (ProcessInfo, Sum Double, Folder (Vars YodaObj)) -> IO ()
 encodeFile fname (i, w, f) = do
   putStrLn ("encoding file " ++ fname) >> hFlush stdout
   withFile fname WriteMode $ \h ->
@@ -61,7 +62,7 @@ encodeFile fname (i, w, f) = do
 decodeFile
   :: Maybe String
   -> String
-  -> IO (Either String (Int, Sum Double, Folder (Vars YodaObj)))
+  -> IO (Either String (ProcessInfo, Sum Double, Folder (Vars YodaObj)))
 decodeFile rxp fname = do
   putStrLn ("decoding file " ++ fname)
   hFlush stdout
@@ -88,21 +89,28 @@ decodeFiles
   :: Foldable f
   => Maybe String
   -> f String
-  -> IO (Either String (IM.IntMap (Sum Double, Folder (Vars YodaObj))))
+  -> IO (Either String (StrictMap ProcessInfo (Sum Double, Folder (Vars YodaObj))))
 decodeFiles rxp infs =
-  P.fold (liftA2 add) (Right IM.empty) id
+  P.fold (liftA2 add) (Right mempty) id
   $ P.mapM (decodeFile rxp) <-< P.each infs
 
   where
-    add im (i, w, fol) = IM.insertWith mappend i (w, fol) im
+    add
+      :: StrictMap ProcessInfo (Sum Double, Folder (Vars YodaObj))
+      -> (ProcessInfo, Sum Double, Folder (Vars YodaObj))
+      -> StrictMap ProcessInfo (Sum Double, Folder (Vars YodaObj))
+    add sm (proci, w, fol) = sm & at proci %~ f (w, fol)
+    f y Nothing  = Just y
+    f y (Just x) = Just $ x `mappend` y
 
 
--- decode files with the understanding that they should all have *the same dsid*
+-- decode files with the understanding that they should
+-- all come from the same sample
 decodeFiles'
   :: Foldable f
   => Maybe String
   -> f String
-  -> IO (Either String (Int, Sum Double, Folder (Vars YodaObj)))
+  -> IO (Either String (ProcessInfo, Sum Double, Folder (Vars YodaObj)))
 decodeFiles' rxp infs =
   P.fold add Nothing (fromMaybe $ Left "no files decoded!")
   $ P.mapM (decodeFile rxp) <-< P.each infs

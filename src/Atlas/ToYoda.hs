@@ -19,8 +19,7 @@ import           Data.Semigroup      (Sum (..), (<>))
 import           Options.Applicative
 
 
-type ProcMap = IM.IntMap
-
+type ProcMap = StrictMap ProcessInfo
 
 scaleH :: Double -> Obj -> Obj
 scaleH x (H1DD h) = H1DD $ scaling x h
@@ -71,9 +70,9 @@ mainWith writeFiles = do
       -- TODO
       -- so much traverse.....
       let procmap' =
-            flip IM.mapWithKey procmap
-            $ \ds (Sum w, hs) ->
-              if ds == 0
+            flip imap procmap
+            $ \proci (Sum w, hs) ->
+              if dsid proci == 0
                 then
                   hs
                     & over (traverse.traverse.annots)
@@ -85,11 +84,11 @@ mainWith writeFiles = do
                       . (at "Title" ?~ "\"data\"")
                       )
                 else
-                  let t = ("\"" <> processTitle ds <> "\"")
+                  let t = ("\"" <> processTitle proci <> "\"")
                   in hs
                       & over
                         (traverse.traverse)
-                        ( over noted (scaleH (xsecs IM.! ds / w))
+                        ( over noted (scaleH (xsecs IM.! dsid proci / w))
                           . set (annots.at "Title") (Just t)
                         )
 

@@ -1,6 +1,10 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric      #-}
-{-# LANGUAGE TypeFamilies       #-}
+{-# LANGUAGE DeriveDataTypeable         #-}
+{-# LANGUAGE DeriveGeneric              #-}
+{-# LANGUAGE FlexibleInstances          #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses      #-}
+{-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE TypeFamilies               #-}
 
 module Atlas.Variation
   ( module X
@@ -33,6 +37,8 @@ type Vars = Variation VarMap
 
 newtype StrictMap k a = SM { unSM :: HM.HashMap k a }
   deriving (Show, Eq, Data, Typeable, Generic)
+
+makePrisms ''StrictMap
 
 variationToMap
   :: (IxValue (t a) ~ a, At (t a))
@@ -83,7 +89,6 @@ instance FoldableWithKey (StrictMap k) where
 
 
 
-
 mapMaybeWithKey :: (k -> a1 -> Maybe a) -> StrictMap k a1 -> StrictMap k a
 mapMaybeWithKey f (SM m) = SM $ HM.mapMaybeWithKey f m
 
@@ -118,6 +123,15 @@ instance (Hashable k, Ord k) => Monoid (StrictMap k a) where
 type instance Index (StrictMap k a) = k
 type instance IxValue (StrictMap k a) = a
 
+
+instance (Hashable k, Ord k) => FunctorWithIndex k (StrictMap k) where
+  imap f = over _SM (HM.mapWithKey f)
+
+instance (Hashable k, Ord k) => FoldableWithIndex k (StrictMap k) where
+  ifoldMap f (SM m) = ifoldMap f m
+
+instance (Hashable k, Ord k) => TraversableWithIndex k (StrictMap k) where
+  itraverse f (SM m) = SM <$> itraverse f m
 
 instance (Hashable k, Ord k) => At (StrictMap k a) where
   at k f (SM m) =
