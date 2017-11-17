@@ -95,3 +95,19 @@ executable run-atlas-hadd
 
   default-language:    Haskell2010
   ghc-options:         -Wall
+
+
+executable run-atlas-dump
+  main-is:             app/run-atlas-dump.hs
+  build-depends:       base -any
+                     , foldl -any
+                     , containers -any
+                     , text -any
+                     , pipes -any
+                     , optparse-applicative -any
+                     , deepseq -any
+                     , lens -any
+                     , atlas -any
+
+  default-language:    Haskell2010
+  ghc-options:         -Wall
