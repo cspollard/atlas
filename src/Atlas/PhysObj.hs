@@ -19,7 +19,7 @@ import           GHC.Generics
 -- which yields Vars (Maybe a, SF)
 newtype PhysObj a = PhysObj { unPO :: MaybeT (WriterT SF Vars) a }
   deriving
-    (Generic, Functor, Applicative, Monad, Alternative, Show)
+    (Generic, Functor, Applicative, Monad, Alternative, MonadWriter SF, Show)
 
 
 runPhysObj :: PhysObj a -> Vars (Maybe a, Double)
@@ -36,7 +36,7 @@ runPhysObj po = do
 
 -- instance Foldable PhysObj where
 --   foldMap f = foldMap (foldMap f) . runChronicleT . unPO
---
+
 
 -- TODO
 -- this is incredibly inelegant.
