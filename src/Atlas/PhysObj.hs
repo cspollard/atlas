@@ -14,12 +14,9 @@ import           Control.Monad.Trans.Maybe
 import           Control.Monad.Writer
 import           GHC.Generics
 
--- TODO
--- go back to MaybeT (WriterT SF Vars) a?
--- which yields Vars (Maybe a, SF)
 newtype PhysObj a = PhysObj { unPO :: MaybeT (WriterT SF Vars) a }
   deriving
-    (Generic, Functor, Applicative, Monad, Alternative, MonadWriter SF, Show)
+    (Generic, Functor, Applicative, Monad, Alternative, MonadWriter SF)
 
 
 runPhysObj :: PhysObj a -> Vars (Maybe a, Double)
@@ -28,10 +25,9 @@ runPhysObj po = do
   return (ma, runSF s)
 
 
-
--- instance Show a => Show (PhysObj a) where
---   showsPrec n (PhysObj (ChronicleT v)) =
---     showString "PhysObj " . showParen True (showsPrec n v)
+instance Show a => Show (PhysObj a) where
+  showsPrec n (PhysObj (MaybeT (WriterT v))) =
+    showString "PhysObj " . showParen True (showsPrec n v)
 
 
 -- instance Foldable PhysObj where
