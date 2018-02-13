@@ -11,7 +11,7 @@ import           Atlas.ScaleFactor
 import           Atlas.Variation
 import           Control.Applicative
 import           Control.Monad.Trans.Maybe
-import           Control.Monad.Writer.Strict
+import           Control.Monad.Writer
 import           GHC.Generics
 
 -- TODO
