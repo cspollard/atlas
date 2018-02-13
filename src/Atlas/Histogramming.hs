@@ -26,6 +26,7 @@ import           Control.Applicative
 import           Control.Foldl          (FoldM (..))
 import qualified Control.Foldl          as F
 import           Control.Lens
+import           Control.Monad          (guard)
 import           Data.Bifunctor
 import           Data.Bitraversable
 import           Data.HEP.LorentzVector
@@ -33,7 +34,6 @@ import           Data.Hist
 import qualified Data.Histogram.Generic as G
 import           Data.Semigroup
 import qualified Data.Text              as T
-import           Data.Tuple             (swap)
 import qualified Data.Vector            as V
 import           Data.YODA.Obj
 
@@ -65,11 +65,11 @@ liftAF (F.Fold comb start done) = F.Fold comb' start' done'
 
 
 
-physObjH :: Foldl (a, Double) b -> Foldl (PhysObj a) (Vars b)
+physObjH :: Foldl (a, Double) c -> Foldl (PhysObj a) (Vars c)
 physObjH = lmap runPhysObj . liftAF . lmap go . F.handles _Just
   where
-    go :: These Double a -> Maybe (a, Double)
-    go = fmap swap . sequence . fromThese 1.0 Nothing . fmap Just
+    go (Nothing, _) = Nothing
+    go (Just x, y)  = Just (x, y)
 
 
 foldedH
