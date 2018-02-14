@@ -33,9 +33,9 @@ import           Text.Regex.Posix.String
 
 
 addFiles
-  :: (ProcessInfo, Sum Double, Folder (Vars YodaObj))
-  -> (ProcessInfo, Sum Double, Folder (Vars YodaObj))
-  -> Either String (ProcessInfo, Sum Double, Folder (Vars YodaObj))
+  :: (ProcessInfo, Sum Double, Folder (Annotated (Vars Obj)))
+  -> (ProcessInfo, Sum Double, Folder (Annotated (Vars Obj)))
+  -> Either String (ProcessInfo, Sum Double, Folder (Annotated (Vars Obj)))
 addFiles (i, w, f) (i', w', f')
   | i /= i' = Left "attempting to add two different dsids!"
   | otherwise =
@@ -44,7 +44,7 @@ addFiles (i, w, f) (i', w', f')
     in seq w'' . seq f'' $ Right (i, w'', f'')
 
 
-encodeFile :: String -> (ProcessInfo, Sum Double, Folder (Vars YodaObj)) -> IO ()
+encodeFile :: String -> (ProcessInfo, Sum Double, Folder (Annotated (Vars Obj))) -> IO ()
 encodeFile fname (i, w, f) = do
   putStrLn ("encoding file " ++ fname) >> hFlush stdout
   withFile fname WriteMode $ \h ->
@@ -62,7 +62,7 @@ encodeFile fname (i, w, f) = do
 decodeFile
   :: Maybe String
   -> String
-  -> IO (Either String (ProcessInfo, Sum Double, Folder (Vars YodaObj)))
+  -> IO (Either String (ProcessInfo, Sum Double, Folder (Annotated (Vars Obj))))
 decodeFile rxp fname = do
   putStrLn ("decoding file " ++ fname)
   hFlush stdout
@@ -89,16 +89,16 @@ decodeFiles
   :: Foldable f
   => Maybe String
   -> f String
-  -> IO (Either String (StrictMap ProcessInfo (Sum Double, Folder (Vars YodaObj))))
+  -> IO (Either String (StrictMap ProcessInfo (Sum Double, Folder (Annotated (Vars Obj)))))
 decodeFiles rxp infs =
   P.fold (liftA2 add) (Right mempty) id
   $ P.mapM (decodeFile rxp) <-< P.each infs
 
   where
     add
-      :: StrictMap ProcessInfo (Sum Double, Folder (Vars YodaObj))
-      -> (ProcessInfo, Sum Double, Folder (Vars YodaObj))
-      -> StrictMap ProcessInfo (Sum Double, Folder (Vars YodaObj))
+      :: StrictMap ProcessInfo (Sum Double, Folder (Annotated (Vars Obj)))
+      -> (ProcessInfo, Sum Double, Folder (Annotated (Vars Obj)))
+      -> StrictMap ProcessInfo (Sum Double, Folder (Annotated (Vars Obj)))
     add sm (proci, w, fol) = sm & at proci %~ f (w, fol)
     f y Nothing  = Just y
     f y (Just x) = Just $ x `mappend` y
@@ -110,7 +110,7 @@ decodeFiles'
   :: Foldable f
   => Maybe String
   -> f String
-  -> IO (Either String (ProcessInfo, Sum Double, Folder (Vars YodaObj)))
+  -> IO (Either String (ProcessInfo, Sum Double, Folder (Annotated (Vars Obj))))
 decodeFiles' rxp infs =
   P.fold add Nothing (fromMaybe $ Left "no files decoded!")
   $ P.mapM (decodeFile rxp) <-< P.each infs

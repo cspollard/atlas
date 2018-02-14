@@ -2,7 +2,6 @@
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections       #-}
 
 module Atlas.ToYoda
   ( scaleH, decodeFile, decodeFiles
@@ -54,7 +53,7 @@ opts = info (helper <*> inArgs) fullDesc
 
 
 mainWith
-  :: (String -> ProcMap (Folder (Vars YodaObj)) -> IO ()) -> IO ()
+  :: (String -> ProcMap (Folder (Annotated (Vars Obj))) -> IO ()) -> IO ()
 mainWith writeFiles = do
   args <- execParser opts
 
@@ -74,7 +73,7 @@ mainWith writeFiles = do
               if dsid proci == 0
                 then
                   hs
-                    & over (traverse.traverse.annots)
+                    & over (traverse.annots)
                       ( (at "LineStyle" ?~ "solid")
                       . (at "LineColor" ?~ "Black")
                       . (at "DotSize" ?~ "0.15")
@@ -86,8 +85,8 @@ mainWith writeFiles = do
                   let t = ("\"" <> processTitle proci <> "\"")
                   in hs
                       & over
-                        (traverse.traverse)
-                        ( over noted (scaleH (xsecs IM.! dsid proci / w))
+                        traverse
+                        ( over noted (fmap $ scaleH (xsecs IM.! dsid proci / w))
                           . set (annots.at "Title") (Just t)
                         )
 

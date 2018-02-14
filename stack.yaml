@@ -4,7 +4,7 @@ packages:
 - '.'
 - location:
     git: https://github.com/cspollard/histogram-extras.git
-    commit: 131989aefa7ec40f081e9fbde07c863849e38a4a
+    commit: 48d1cc76d77bfce156a603e21384e38201b76fd2
   extra-dep: true
 
 - location:

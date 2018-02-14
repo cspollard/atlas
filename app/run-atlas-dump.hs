@@ -42,9 +42,10 @@ main = do
       print proci
       putStrLn "sum of weights"
       print wgt
-      write (outfile args) . variationToMap "nominal" $ sequence hs
+      write (outfile args) . variationToMap "nominal" . sequence $ sequence <$> hs
 
   where
+    write :: String -> VarMap (Folder YodaObj) -> IO ()
     write outf hs =
       iforM_ hs $ \varname hs' ->
         withFile (outf ++ '/' : T.unpack varname ++ ".yoda") WriteMode $ \h ->
