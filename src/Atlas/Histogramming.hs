@@ -7,13 +7,12 @@
 {-# LANGUAGE TypeFamilies              #-}
 
 module Atlas.Histogramming
-  ( Fills
-  , Foldl, FoldM(..)
+  ( Foldl, FoldM(..), Fill, VarHist, VarHists, VarFill, VarFills
   , dsigdXpbY, dndx
   , mev, gev, rad, pt
   , channel, channelWithLabel, channelsWithLabels
   , hEmpty, hist1DDef, prof1DDef, hist2DDef
-  , nH, ptH, etaH, lvHs, lvsHs
+  , nH, ptH, etaH
   , (=$<<), (<$=), prebind, liftAF
   , physObjH, foldedH
   -- , filterFolder, matchRegex
@@ -26,7 +25,7 @@ import           Control.Applicative
 import           Control.Foldl          (FoldM (..))
 import qualified Control.Foldl          as F
 import           Control.Lens
-import           Control.Monad          (guard)
+import           Control.Monad          (guard, join)
 import           Data.Bifunctor
 import           Data.Bitraversable
 import           Data.HEP.LorentzVector
@@ -39,7 +38,11 @@ import           Data.YODA.Obj
 
 
 type Foldl = F.Fold
-type Fills a = Foldl (PhysObj a) (Folder (Vars YodaObj))
+type Fill a = Foldl (a, Double) YodaObj
+type VarHist = Annotated (Vars Obj)
+type VarHists = Folder VarHist
+type VarFill a = Foldl (PhysObj a) VarHist
+type VarFills a = Foldl (PhysObj a) VarHists
 
 
 prebind :: (Monad m, Profunctor p) => (a -> m b) -> p (m b) c -> p (m a) c
@@ -68,9 +71,16 @@ liftAF (F.Fold comb start done) = F.Fold comb' start' done'
 physObjH :: Foldl (a, Double) c -> Foldl (PhysObj a) (Vars c)
 physObjH = lmap runPhysObj . liftAF . lmap go . F.handles _Just
   where
+    -- TODO
+    -- inefficiencies really should play a role somehow...
     go (Nothing, _) = Nothing
     go (Just x, y)  = Just (x, y)
 
+
+-- TODO
+-- this is a horrible name
+fillJoin :: Foldl (a, Double) (Vars b) -> Foldl (PhysObj a) (Vars b)
+fillJoin = fmap join . physObjH
 
 foldedH
   :: (Foldable f, Applicative f, Bitraversable t)
@@ -87,32 +97,27 @@ hEmpty b =
 
 hist1DDef
   :: (BinValue b ~ Double, IntervalBin b)
-  => b -> T.Text -> T.Text -> Foldl (Double, Double) YodaObj
+  => b -> T.Text -> T.Text -> Fill Double
 hist1DDef b xt yt =
-  Annotated [("XLabel", xt), ("YLabel", yt)]
-  . H1DD
-  . over bins toArbBin
+  Annotated [("XLabel", xt), ("YLabel", yt)] . H1DD . over bins toArbBin
   <$> hist1DFill (hEmpty b)
 
 
 hist2DDef
   :: (BinValue b ~ Double, IntervalBin b)
-  => b -> b -> T.Text -> T.Text -> Foldl ((Double, Double), Double) YodaObj
+  => b -> b -> T.Text -> T.Text -> Fill (Double, Double)
 hist2DDef bx by xt yt =
   Annotated [("XLabel", xt), ("YLabel", yt)]
   . H2DD
-  . over bins (fmapBinX toArbBin)
-  . over bins (fmapBinY toArbBin)
+  . over bins (fmapBinX toArbBin . fmapBinY toArbBin)
   <$> hist2DFill (hEmpty $ Bin2D bx by)
 
 
 prof1DDef
   :: (BinValue b ~ Double, IntervalBin b)
-  => b -> T.Text -> T.Text -> Foldl ((Double, Double), Double) YodaObj
+  => b -> T.Text -> T.Text -> Fill (Double, Double)
 prof1DDef b xt yt =
-  Annotated [("XLabel", xt), ("YLabel", yt)]
-  . P1DD
-  . over bins toArbBin
+  Annotated [("XLabel", xt), ("YLabel", yt)] . P1DD . over bins toArbBin
   <$> prof1DFill (hEmpty b)
 
 
@@ -146,14 +151,13 @@ channelsWithLabels fns fills =
   mconcat $ uncurry channelWithLabel <$> fns <*> pure fills
 
 
-nH :: Foldable t => Int -> Foldl (t a, Double) (Folder YodaObj)
+nH :: Foldable t => Int -> Fill (t a)
 nH n =
-  singleton "/n"
-  <$> hist1DDef (binD 0 n (fromIntegral n)) "$n$" (dndx "n" "1")
+  hist1DDef (binD 0 n (fromIntegral n)) "$n$" (dndx "n" "1")
   <$= first (fromIntegral . length)
 
 
-ptH :: HasLorentzVector a => Foldl (a, Double) YodaObj
+ptH :: HasLorentzVector a => Fill a
 ptH =
   hist1DDef
     (logBinD 20 25 500) -- :: TransformedBin BinD (Log10BT Double))
@@ -162,30 +166,11 @@ ptH =
     <$= first (view lvPt)
 
 
-etaH :: HasLorentzVector a => Foldl (a, Double) YodaObj
+etaH :: HasLorentzVector a => Fill a
 etaH =
   hist1DDef (binD (-3) 39 3) "$\\eta$" (dndx "\\eta" "{\\mathrm rad}")
     <$= first (view lvEta)
 
-
-lvHs :: HasLorentzVector a => Fills a
-lvHs =
-  mconcat
-    [ singleton "/pt" <$> physObjH ptH
-    , singleton "/eta" <$> physObjH etaH
-    ]
-
-
-lvsHs
-  :: (Foldable f, Applicative f, HasLorentzVector a)
-  => Fills (f a)
-lvsHs =
-  mconcat
-  [ fmap (singleton "/pt") . physObjH
-    $ F.handles folded ptH <$= bitraverse id pure
-  , fmap (singleton "/eta") . physObjH
-    $ F.handles folded etaH <$= bitraverse id pure
-  ]
 
 
 dsigdXpbY :: T.Text -> T.Text -> T.Text
@@ -203,15 +188,15 @@ rad = "\\mathrm{rad}"
 pt = "p_{\\mathrm{T}}"
 
 
--- -- innerF :: Monad m => (a -> m b) -> Foldl (m b) c -> Foldl (m a) c
--- -- innerF g = F.premap (g =<<)
+-- innerF :: Monad m => (a -> m b) -> Foldl (m b) c -> Foldl (m a) c
+-- innerF g = F.premap (g =<<)
+--
+-- -- outerM :: Monad m => (a -> m b) -> Foldl (m b) (m c) -> Foldl (m a) (m c)
+-- -- outerM g (Foldl comb start done) = Foldl comb' start' done'
+-- --   where
+-- --     start' = return start
+-- --     done' x = done =<< x
+-- --     comb' mx ma = flip comb (g =<< ma) <$> mx
 -- --
--- -- -- outerM :: Monad m => (a -> m b) -> Foldl (m b) (m c) -> Foldl (m a) (m c)
--- -- -- outerM g (Foldl comb start done) = Foldl comb' start' done'
--- -- --   where
--- -- --     start' = return start
--- -- --     done' x = done =<< x
--- -- --     comb' mx ma = flip comb (g =<< ma) <$> mx
--- -- --
--- -- -- outer :: Applicative m => (a -> m b) -> Foldl b c -> Foldl a (m c)
--- -- -- outer g = F.premap g . liftFA
+-- -- outer :: Applicative m => (a -> m b) -> Foldl b c -> Foldl a (m c)
+-- -- outer g = F.premap g . liftFA
