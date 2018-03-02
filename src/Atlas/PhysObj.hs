@@ -5,7 +5,7 @@
 {-# LANGUAGE TupleSections              #-}
 
 module Atlas.PhysObj
-  ( PhysObj(..), runPhysObj, collapsePO, poFromVars, varSF, poFail
+  ( PhysObj(..), runPhysObj, physObj, collapsePO, poFromVars, varSF, poFail
   ) where
 
 import           Atlas.ScaleFactor
@@ -26,6 +26,10 @@ newtype PhysObj a = PhysObj { unPO :: MaybeT (WriterT SF Vars) a }
 
 runPhysObj :: PhysObj a -> Vars (Maybe a, SF)
 runPhysObj = runWriterT . runMaybeT . unPO
+
+
+physObj :: Vars (Maybe a, SF) -> PhysObj a
+physObj = PhysObj . MaybeT . WriterT
 
 
 instance Show a => Show (PhysObj a) where
