@@ -5,7 +5,7 @@
 {-# LANGUAGE TupleSections              #-}
 
 module Atlas.PhysObj
-  ( PhysObj(..), runPhysObj, collapsePO, poFromVars
+  ( PhysObj(..), runPhysObj, collapsePO, poFromVars, varSF
   ) where
 
 import           Atlas.ScaleFactor
@@ -34,6 +34,10 @@ instance Show a => Show (PhysObj a) where
 
 poFromVars :: Vars a -> PhysObj a
 poFromVars = PhysObj . MaybeT . WriterT . fmap ((,mempty) . Just)
+
+varSF :: Vars SF -> PhysObj ()
+varSF = PhysObj . MaybeT . WriterT . fmap (Just (),)
+
 
 collapsePO :: PhysObj [a] -> [PhysObj a]
 collapsePO po =
