@@ -12,7 +12,7 @@ module Atlas.Histogramming
   , mev, gev, rad, pt
   , channel, channelWithLabel, channelsWithLabels
   , hEmpty, hist1DDef, prof1DDef, hist2DDef
-  , nH, ptH, etaH
+  , nH, ptH, etaH, lvHs
   , (=$<<), (<$=), prebind, liftAF
   , physObjH, foldedH
   -- , filterFolder, matchRegex
@@ -164,6 +164,14 @@ etaH :: HasLorentzVector a => VarFill a
 etaH =
   hist1DDef (binD (-3) 39 3) "$\\eta$" (dndx "\\eta" "{\\mathrm rad}")
     <$= fmap (view lvEta)
+
+
+lvHs :: HasLorentzVector a => VarFills a
+lvHs =
+  mconcat
+  [ singleton "/pt" <$> ptH
+  , singleton "/eta" <$> etaH
+  ]
 
 
 
