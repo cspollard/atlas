@@ -32,7 +32,11 @@ instance (Eq b, Hashable b, Monoid a) => Monoid (ScaleFactor b a) where
   mempty = SF mempty mempty
   {-# INLINABLE mempty #-}
 
-  a `mappend` b = unwrapMonoid $ WrapMonoid a <> WrapMonoid b
+  SF x mx `mappend` SF _ my =
+    let dxy = my `HM.difference` mx
+        mx' = dxy `HM.union` mx
+        x' = foldl mappend x dxy
+    in SF x' mx'
   {-# INLINABLE mappend #-}
 
 

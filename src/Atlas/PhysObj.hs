@@ -2,16 +2,20 @@
 {-# LANGUAGE DeriveGeneric              #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
+{-# LANGUAGE TupleSections              #-}
 
 module Atlas.PhysObj
-  ( PhysObj(..), runPhysObj
+  ( PhysObj(..), runPhysObj, collapsePO, poFromVars
   ) where
 
 import           Atlas.ScaleFactor
 import           Atlas.Variation
 import           Control.Applicative
 import           Control.Monad.Trans.Maybe
-import           Control.Monad.Writer
+import           Control.Monad.Writer.Strict
+import           Data.Align
+import           Data.Key
+import           Data.These
 import           GHC.Generics
 
 newtype PhysObj a = PhysObj { unPO :: MaybeT (WriterT SF Vars) a }
@@ -19,16 +23,41 @@ newtype PhysObj a = PhysObj { unPO :: MaybeT (WriterT SF Vars) a }
     (Generic, Functor, Applicative, Monad, Alternative, MonadWriter SF)
 
 
-runPhysObj :: PhysObj a -> Vars (Maybe a, Double)
-runPhysObj po = do
-  (ma, s) <- runWriterT . runMaybeT $ unPO po
-  return (ma, runSF s)
+runPhysObj :: PhysObj a -> Vars (Maybe a, SF)
+runPhysObj = runWriterT . runMaybeT . unPO
 
 
 instance Show a => Show (PhysObj a) where
-  showsPrec n (PhysObj (MaybeT (WriterT v))) =
-    showString "PhysObj " . showParen True (showsPrec n v)
+  show (PhysObj (MaybeT (WriterT v))) =
+    "PhysObj (" ++ show v ++ ")"
 
+
+poFromVars :: Vars a -> PhysObj a
+poFromVars = PhysObj . MaybeT . WriterT . fmap ((,mempty) . Just)
+
+collapsePO :: PhysObj [a] -> [PhysObj a]
+collapsePO po =
+  let vs' = runPhysObj po
+      Variation n v = toTup <$> vs'
+      vars = foldrWithKey goFold mempty v
+      vars' = alignWith (theseToVar $ (Nothing, mempty) <$ v) n vars
+  in PhysObj . MaybeT . WriterT <$> vars'
+
+  where
+    goFold k = alignWith (goThese k)
+
+    goThese k (This (x, s))     = singleton k (Just x, s)
+    -- TODO
+    -- dropping inefficiency SFs
+    goThese k (That xs)         = singleton k (Nothing, mempty) `mappend` xs
+    goThese k (These (x, s) xs) = singleton k (Just x, s) `mappend` xs
+
+    toTup (Just fxs, s) = (,s) <$> fxs
+    toTup (Nothing, _)  = []
+
+    theseToVar vm (This (n, s))   = Variation (Just n, s) vm
+    theseToVar _ (That v)         = Variation (Nothing, mempty) v
+    theseToVar _ (These (n, s) v) = Variation (Just n, s) v
 
 -- instance Foldable PhysObj where
 --   foldMap f = foldMap (foldMap f) . runChronicleT . unPO

@@ -20,12 +20,13 @@ module Atlas.Histogramming
 
 
 import           Atlas.PhysObj
+import           Atlas.ScaleFactor
 import           Atlas.Variation        hiding (singleton)
 import           Control.Applicative
 import           Control.Foldl          (FoldM (..))
 import qualified Control.Foldl          as F
 import           Control.Lens
-import           Control.Monad          (guard, join)
+import           Control.Monad          (guard)
 import           Data.Bifunctor
 import           Data.Bitraversable
 import           Data.HEP.LorentzVector
@@ -67,20 +68,14 @@ liftAF (F.Fold comb start done) = F.Fold comb' start' done'
     done' = fmap done
 
 
-
 physObjH :: Foldl (a, Double) c -> Foldl (PhysObj a) (Vars c)
-physObjH = lmap runPhysObj . liftAF . lmap go . F.handles _Just
+physObjH = lmap ((fmap.fmap) runSF . runPhysObj) . liftAF . lmap go . F.handles _Just
   where
     -- TODO
     -- inefficiencies really should play a role somehow...
     go (Nothing, _) = Nothing
     go (Just x, y)  = Just (x, y)
 
-
--- TODO
--- this is a horrible name
-fillJoin :: Foldl (a, Double) (Vars b) -> Foldl (PhysObj a) (Vars b)
-fillJoin = fmap join . physObjH
 
 foldedH
   :: (Foldable f, Applicative f, Bitraversable t)
