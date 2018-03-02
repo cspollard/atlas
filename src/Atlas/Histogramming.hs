@@ -27,7 +27,6 @@ import           Control.Foldl          (FoldM (..))
 import qualified Control.Foldl          as F
 import           Control.Lens
 import           Control.Monad          (guard)
-import           Data.Bifunctor
 import           Data.Bitraversable
 import           Data.HEP.LorentzVector
 import           Data.Hist
@@ -68,7 +67,7 @@ liftAF (F.Fold comb start done) = F.Fold comb' start' done'
     done' = fmap done
 
 
-physObjH :: Foldl (a, Double) c -> Foldl (PhysObj a) (Vars c)
+physObjH :: Foldl (a, Double) b -> Foldl (PhysObj a) (Vars b)
 physObjH = lmap ((fmap.fmap) runSF . runPhysObj) . liftAF . lmap go . F.handles _Just
   where
     -- TODO
@@ -92,10 +91,10 @@ hEmpty b =
 
 hist1DDef
   :: (BinValue b ~ Double, IntervalBin b)
-  => b -> T.Text -> T.Text -> Fill Double
+  => b -> T.Text -> T.Text -> VarFill Double
 hist1DDef b xt yt =
-  Annotated [("XLabel", xt), ("YLabel", yt)] . H1DD . over bins toArbBin
-  <$> hist1DFill (hEmpty b)
+  Annotated [("XLabel", xt), ("YLabel", yt)] . fmap (H1DD . over bins toArbBin)
+  <$> physObjH (hist1DFill (hEmpty b))
 
 
 hist2DDef
@@ -146,25 +145,25 @@ channelsWithLabels fns fills =
   mconcat $ uncurry channelWithLabel <$> fns <*> pure fills
 
 
-nH :: Foldable t => Int -> Fill (t a)
+nH :: Foldable t => Int -> VarFill (t a)
 nH n =
   hist1DDef (binD 0 n (fromIntegral n)) "$n$" (dndx "n" "1")
-  <$= first (fromIntegral . length)
+  <$= fmap (fromIntegral . length)
 
 
-ptH :: HasLorentzVector a => Fill a
+ptH :: HasLorentzVector a => VarFill a
 ptH =
   hist1DDef
     (logBinD 20 25 500) -- :: TransformedBin BinD (Log10BT Double))
     "$p_{\\mathrm T}$ [GeV]"
     (dndx pt gev)
-    <$= first (view lvPt)
+    <$= fmap (view lvPt)
 
 
-etaH :: HasLorentzVector a => Fill a
+etaH :: HasLorentzVector a => VarFill a
 etaH =
   hist1DDef (binD (-3) 39 3) "$\\eta$" (dndx "\\eta" "{\\mathrm rad}")
-    <$= first (view lvEta)
+    <$= fmap (view lvEta)
 
 
 
