@@ -5,7 +5,7 @@
 {-# LANGUAGE TupleSections              #-}
 
 module Atlas.PhysObj
-  ( PhysObj(..), runPhysObj, collapsePO, poFromVars, varSF
+  ( PhysObj(..), runPhysObj, collapsePO, poFromVars, varSF, poFail
   ) where
 
 import           Atlas.ScaleFactor
@@ -17,6 +17,7 @@ import           Data.Align
 import           Data.Key
 import           Data.These
 import           GHC.Generics
+
 
 newtype PhysObj a = PhysObj { unPO :: MaybeT (WriterT SF Vars) a }
   deriving
@@ -34,6 +35,9 @@ instance Show a => Show (PhysObj a) where
 
 poFromVars :: Vars a -> PhysObj a
 poFromVars = PhysObj . MaybeT . WriterT . fmap ((,mempty) . Just)
+
+poFail :: PhysObj a
+poFail = PhysObj . MaybeT . WriterT $ Variation (Nothing, mempty) mempty
 
 varSF :: Vars SF -> PhysObj ()
 varSF = PhysObj . MaybeT . WriterT . fmap (Just (),)
