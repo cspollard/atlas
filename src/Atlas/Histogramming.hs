@@ -99,20 +99,20 @@ hist1DDef b xt yt =
 
 hist2DDef
   :: (BinValue b ~ Double, IntervalBin b)
-  => b -> b -> T.Text -> T.Text -> Fill (Double, Double)
+  => b -> b -> T.Text -> T.Text -> VarFill (Double, Double)
 hist2DDef bx by xt yt =
   Annotated [("XLabel", xt), ("YLabel", yt)]
-  . H2DD
-  . over bins (fmapBinX toArbBin . fmapBinY toArbBin)
-  <$> hist2DFill (hEmpty $ Bin2D bx by)
+  . fmap (H2DD . over bins (fmapBinX toArbBin . fmapBinY toArbBin))
+  <$> physObjH (hist2DFill (hEmpty $ Bin2D bx by))
 
 
 prof1DDef
   :: (BinValue b ~ Double, IntervalBin b)
-  => b -> T.Text -> T.Text -> Fill (Double, Double)
+  => b -> T.Text -> T.Text -> VarFill (Double, Double)
 prof1DDef b xt yt =
-  Annotated [("XLabel", xt), ("YLabel", yt)] . P1DD . over bins toArbBin
-  <$> prof1DFill (hEmpty b)
+  Annotated [("XLabel", xt), ("YLabel", yt)]
+  . fmap (P1DD . over bins toArbBin)
+  <$> physObjH (prof1DFill (hEmpty b))
 
 
 cut :: (Alternative m, Monad m) => (a -> m Bool) -> a -> m ()
