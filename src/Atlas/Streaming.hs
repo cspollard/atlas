@@ -74,7 +74,7 @@ decodeFile rxp fname = do
           fol <-
             P.fold (flip $ uncurry M.insert) M.empty Folder
             $ P.filter filt <-< void p
-          seq "hello!" . return $ Right (i, w, fol)
+          return $ Right (i, w, fol)
         Nothing -> return . Left $ "failed to parse file " ++ fname
 
   where
