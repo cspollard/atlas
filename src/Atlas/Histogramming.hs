@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts          #-}
+{-# LANGUAGE MultiParamTypeClasses     #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE OverloadedLists           #-}
 {-# LANGUAGE OverloadedStrings         #-}
@@ -93,7 +94,8 @@ hist1DDef
   :: (BinValue b ~ Double, IntervalBin b)
   => b -> T.Text -> T.Text -> VarFill Double
 hist1DDef b xt yt =
-  Annotated [("XLabel", xt), ("YLabel", yt)] . fmap (H1DD . over bins toArbBin)
+  Annotated [("XLabel", xt), ("YLabel", yt)]
+  . fmap (H1DD . over bins toArbBin)
   <$> physObjH (hist1DFill (hEmpty b))
 
 
