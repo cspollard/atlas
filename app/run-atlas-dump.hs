@@ -4,6 +4,7 @@
 module Main where
 
 import           Atlas
+import           Atlas.ToYoda        (scaleH)
 import           Control.Lens        (iforM_)
 import           Data.Monoid
 import qualified Data.Text           as T
@@ -37,12 +38,14 @@ main = do
   efol <- decodeFile (regex args) (infile args)
   case efol of
     Left err  -> error err
-    Right (proci, wgt, hs) -> do
+    Right (proci, Sum wgt, hs) -> do
       putStrLn "process info:"
       print proci
       putStrLn "sum of weights"
       print wgt
-      write (outfile args) . variationToMap "nominal" . sequence $ sequence <$> hs
+      let hs' = (fmap.fmap.fmap) (scaleH $ 1.0/wgt) hs
+      write (outfile args) . variationToMap "nominal" . sequence $
+        sequence <$> hs'
 
   where
     write :: String -> VarMap (Folder YodaObj) -> IO ()
