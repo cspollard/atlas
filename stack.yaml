@@ -4,20 +4,22 @@ packages:
 - '.'
 - location:
     git: https://github.com/cspollard/histogram-extras.git
-    commit: e67f4950604f38a0073ebb142146c2e257d324d7
+    commit: 0fdeb72786a7cc113652090bf189a557f52c5be4
   extra-dep: true
 
 - location:
     git: https://github.com/cspollard/variation.git
-    commit: 5ec69558ad1e8bc4f94510f851f24671967fc922
+    commit: e9874a39eaae7d2675c070ffc9d05e7c97d8a3e3
   extra-dep: true
 
 - location:
     git: https://github.com/cspollard/hhep.git
-    commit: 62732621d721b5522248932193a41dd7246fec01
+    commit: 16e0b6ba188c56b278fdb8fb34970d044b7a243b
   extra-dep: true
 
 extra-deps:
+- histogram-fill-0.9.1.0
+- histogram-fill-cereal-0.8.5.0
 - cereal-text-0.1.0.2
-- histogram-fill-cereal-0.6.2.0
-resolver: lts-9.0
+
+resolver: lts-13.8
