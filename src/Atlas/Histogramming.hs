@@ -32,6 +32,7 @@ import           Data.Bitraversable
 import           Data.HEP.LorentzVector
 import           Data.Hist
 import qualified Data.Histogram.Generic as G
+import           Data.Semigroup
 import qualified Data.Text              as T
 import qualified Data.Vector            as V
 import           Data.YODA.Obj
