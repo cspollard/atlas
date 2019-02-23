@@ -1,0 +1,73 @@
+name:                atlas
+version:             0.3.1.0
+github:              "cspollard/atlas"
+license:             BSD3
+author:              "Chris Pollard"
+maintainer:          "cspollard@gmail.com"
+copyright:           "2019 Chris Pollard"
+
+# Metadata used when publishing your package
+# synopsis:            Short description of your package
+# category:            Web
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on GitHub at <https://github.com/githubuser/test#readme>
+
+
+dependencies:
+- base 
+- lens 
+- mtl 
+- mmorph 
+- exceptions 
+- contravariant 
+- profunctors 
+- bifunctors 
+- deepseq 
+- transformers 
+- mtl 
+- these 
+- keys 
+- foldl 
+- bytestring 
+- text 
+- linear 
+- containers 
+- unordered-containers 
+- hashable 
+- attoparsec 
+- cereal 
+- vector 
+- zlib 
+- optparse-applicative 
+- regex-base 
+- regex-posix 
+- pipes 
+- pipes-bytestring 
+- pipes-parse 
+- streaming-commons 
+- variation 
+- histogram-fill 
+- hhep 
+- histogram-extras 
+- semigroupoids 
+
+library:
+  source-dirs: src
+  ghc-options: -Wall
+
+executables:
+  run-atlas-hadd:
+    source-dirs: app
+    main: run-atlas-hadd.hs
+    dependencies:
+      - atlas
+
+
+  run-atlas-dump:
+    source-dirs: app
+    main: run-atlas-dump.hs
+    dependencies:
+      - atlas
