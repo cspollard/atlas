@@ -17,7 +17,8 @@ import           System.IO
 data InArgs =
   InArgs
     { outfile :: String
-    , regex   :: Maybe String
+    , regex   :: [String]
+    , negex   :: [String]
     , infile  :: String
     }
 
@@ -26,8 +27,10 @@ inArgs =
   InArgs
   <$> strOption
     ( long "outfolder" <> short 'o' <> metavar "OUTFOLDER" )
-  <*> optional
+  <*> many
     ( strOption (long "regex" <> metavar "REGEX=\".*\"") )
+  <*> many
+    ( strOption (long "negex" <> metavar "NEGEX=\".*\"") )
   <*> strArgument (metavar "INFILE")
 
 main :: IO ()
@@ -35,7 +38,7 @@ main = do
   hSetBuffering stdout LineBuffering
   args <- execParser $ info (helper <*> inArgs) fullDesc
 
-  efol <- decodeFile (regex args) (infile args)
+  efol <- decodeFile (regex args) (negex args) (infile args)
   case efol of
     Left err  -> error err
     Right (proci, Sum wgt, hs) -> do

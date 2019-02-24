@@ -29,7 +29,8 @@ data InArgs =
   InArgs
     { outfolder :: String
     , xsecfile  :: String
-    , regex     :: Maybe String
+    , regex     :: [String]
+    , negex     :: [String]
     , infiles   :: [String]
     }
 
@@ -43,8 +44,8 @@ inArgs = InArgs
   <*> strOption
     ( long "xsecfile"
     <> metavar "XSECFILE" )
-  <*> optional
-    ( strOption (long "regex" <> metavar "REGEX=\".*\"") )
+  <*> many ( strOption (long "regex" <> metavar "REGEX=\".*\"") )
+  <*> many ( strOption (long "negex" <> metavar "negex=\"\"") )
   <*> some (strArgument (metavar "INFILES"))
 
 
@@ -61,7 +62,7 @@ mainWith writeFiles = do
     fromMaybe (error "failed to parse xsec file.")
       <$> (fmap.fmap.fmap) fst (readXSecFile (xsecfile args))
 
-  epm <- decodeFiles (regex args) (infiles args)
+  epm <- decodeFiles (regex args) (negex args) (infiles args)
   case epm of
     Left err -> error err
     Right procmap -> do

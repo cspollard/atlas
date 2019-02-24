@@ -60,10 +60,11 @@ encodeFile fname (i, w, f) = do
 
 
 decodeFile
-  :: Maybe String
+  :: [String]
+  -> [String]
   -> String
   -> IO (Either String (ProcessInfo, Sum Double, Folder (Annotated (Vars Obj))))
-decodeFile rxp fname = do
+decodeFile rxps nxps fname = do
   putStrLn ("decoding file " ++ fname)
   hFlush stdout
   withFile fname ReadMode $ \h ->
@@ -78,7 +79,13 @@ decodeFile rxp fname = do
         Nothing -> return . Left $ "failed to parse file " ++ fname
 
   where
-    filt = fromMaybe (const True) (matchRegex <$> rxp) . T.unpack . fst
+    filtrx s = all (\rx -> matchRegex rx s) rxps
+    filtnx s = not $ any (\rx -> matchRegex rx s) nxps
+    filt x =
+      let s = T.unpack $ fst x
+      in filtrx s && filtnx s
+
+
     deser p = do
       (mi, p') <- runStateT deserializeP p
       (mw, p'') <- runStateT deserializeP p'
@@ -87,12 +94,13 @@ decodeFile rxp fname = do
 
 decodeFiles
   :: Foldable f
-  => Maybe String
+  => [String]
+  -> [String]
   -> f String
   -> IO (Either String (StrictMap ProcessInfo (Sum Double, Folder (Annotated (Vars Obj)))))
-decodeFiles rxp infs =
+decodeFiles rxp nxp infs =
   P.fold (liftA2 add) (Right mempty) id
-  $ P.mapM (decodeFile rxp) <-< P.each infs
+  $ P.mapM (decodeFile rxp nxp) <-< P.each infs
 
   where
     add
@@ -108,12 +116,13 @@ decodeFiles rxp infs =
 -- all come from the same sample
 decodeFiles'
   :: Foldable f
-  => Maybe String
+  => [String]
+  -> [String]
   -> f String
   -> IO (Either String (ProcessInfo, Sum Double, Folder (Annotated (Vars Obj))))
-decodeFiles' rxp infs =
+decodeFiles' rxp nxp infs =
   P.fold add Nothing (fromMaybe $ Left "no files decoded!")
-  $ P.mapM (decodeFile rxp) <-< P.each infs
+  $ P.mapM (decodeFile rxp nxp) <-< P.each infs
 
   where
     add Nothing y                  = Just $! y
