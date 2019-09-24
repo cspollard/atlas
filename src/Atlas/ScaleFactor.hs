@@ -27,25 +27,27 @@ instance (Eq b, Hashable b, Semigroup a) => Semigroup (ScaleFactor b a) where
         mx' = dxy `HM.union` mx
         x' = foldl (<>) x dxy
     in SF x' mx'
+  {-# INLINE (<>) #-}
+  
 
 instance (Eq b, Hashable b, Monoid a) => Monoid (ScaleFactor b a) where
   mempty = SF mempty mempty
-  {-# INLINABLE mempty #-}
+  {-# INLINE mempty #-}
 
   SF x mx `mappend` SF _ my =
     let dxy = my `HM.difference` mx
         mx' = dxy `HM.union` mx
         x' = foldl mappend x dxy
     in SF x' mx'
-  {-# INLINABLE mappend #-}
+  {-# INLINE mappend #-}
 
 
 type SF = ScaleFactor T.Text (Product Double)
 
 runSF :: ScaleFactor b (Product Double) -> Double
 runSF (SF x _) = getProduct x
-{-# INLINABLE runSF #-}
+{-# INLINE runSF #-}
 
 sf :: T.Text -> Double -> SF
 sf t x = let x' = Product x in SF x' $ HM.singleton t x'
-{-# INLINABLE sf #-}
+{-# INLINE sf #-}

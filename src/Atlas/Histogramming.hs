@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts          #-}
+{-# LANGUAGE TupleSections          #-}
 {-# LANGUAGE MultiParamTypeClasses     #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE OverloadedLists           #-}
@@ -8,172 +9,115 @@
 {-# LANGUAGE TypeFamilies              #-}
 
 module Atlas.Histogramming
-  ( Foldl, FoldM(..), Fill, VarHist, VarHists, VarFill, VarFills
-  , dsigdXpbY, dndx
+  ( dsigdXpbY, dndx
   , mev, gev, rad, pt
-  , channel, channelWithLabel, channelsWithLabels
-  , hEmpty, hist1DDef, prof1DDef, hist2DDef
+  , layerVars, layerCut
+  , hist1DDef, prof1DDef, hist2DDef
   , nH, ptH, etaH, lvHs
-  , (=$<<), (<$=), prebind, liftAF
-  , physObjH, foldedH
-  -- , filterFolder, matchRegex
+  , (<$=), (=$>), (=$$>)
   ) where
 
 
-import           Atlas.PhysObj
-import           Atlas.ScaleFactor
 import           Atlas.Variation        hiding (singleton)
-import           Control.Applicative
-import           Control.Foldl          (FoldM (..))
-import qualified Control.Foldl          as F
-import           Control.Lens
-import           Control.Monad          (guard)
-import           Data.Bitraversable
 import           Data.HEP.LorentzVector
-import           Data.Hist
-import qualified Data.Histogram.Generic as G
-import           Data.Semigroup
+import Control.Lens (view)
+import Control.Category (Category)
+import Data.Functor.Identity
+import           Data.Binned
+import           Data.Gauss
+import Data.Profunctor
+import Data.Bitraversable (bisequenceA)
+import Data.Annotated
+import           Data.Both
+import           Data.Moore
 import qualified Data.Text              as T
-import qualified Data.Vector            as V
-import           Data.YODA.Obj
 
 
-type Foldl = F.Fold
-type Fill a = Foldl (a, Double) YodaObj
-type VarHist = Annotated (Vars Obj)
-type VarHists = Folder VarHist
-type VarFill a = Foldl (PhysObj a) VarHist
-type VarFills a = Foldl (PhysObj a) VarHists
-
-
-prebind :: (Monad m, Profunctor p) => (a -> m b) -> p (m b) c -> p (m a) c
-prebind g = lmap (>>= g)
-
-
-infixl 2 =$<<
-(=$<<) :: (Monad m, Profunctor p) => p (m b) c -> (a -> m b) -> p (m a) c
-(=$<<) = flip prebind
-
+infixl 2 =$>
+(=$>) :: Profunctor p => (a -> b) -> p b c -> p a c
+(=$>) = lmap
 
 infixl 2 <$=
 (<$=) :: Profunctor p => p b c -> (a -> b) -> p a c
-h <$= f = lmap f h
+(<$=) = flip lmap
 
 
-liftAF :: Applicative m => Foldl b c -> Foldl (m b) (m c)
-liftAF (F.Fold comb start done) = F.Fold comb' start' done'
-  where
-    start' = pure start
-    comb' xs x = comb <$> xs <*> x
-    done' = fmap done
+infixl 2 =$$>
+(=$$>) :: (Profunctor p, Category p) => p i' i -> Moore p i o -> Moore p i' o
+(=$$>) = premap
 
 
-physObjH :: Foldl (a, Double) b -> Foldl (PhysObj a) (Vars b)
-physObjH = lmap ((fmap.fmap) runSF . runPhysObj) . liftAF . lmap go . F.handles _Just
-  where
-    -- TODO
-    -- inefficiencies really should play a role somehow...
-    go (Nothing, _) = Nothing
-    go (Just x, y)  = Just (x, y)
+layerVars :: [T.Text] -> Moore' a b -> Moore' (Vars a) (Vars b)
+layerVars ts m = apply $ copyVars ts m
 
 
-foldedH
-  :: (Foldable f, Applicative f, Bitraversable t)
-  => Foldl (t c d) c1 -> Foldl (t (f c) d) c1
-foldedH f = F.handles folded f <$= bitraverse id pure
+layerCut :: String -> Moore' a b -> Moore' c d -> Moore' (Either a c) (String, Both b d)
+layerCut s mp mf = (s,) <$> layerEither (Both mp mf)
 
 
-hEmpty :: (Bin bin, Monoid a) => bin -> Histogram V.Vector bin a
-hEmpty b =
-  let v = V.replicate (nBins b) mempty
-      uo = Just (mempty, mempty)
-  in G.histogramUO b uo v
+type Histo1D = Binned Double (Gauss Identity Double)
+type Prof1D = Binned Double (Gauss TF Double)
+type Histo2D = Binned Double (Binned Double (Gauss TF Double))
 
 
 hist1DDef
-  :: (BinValue b ~ Double, IntervalBin b)
-  => b -> T.Text -> T.Text -> VarFill Double
-hist1DDef b xt yt =
+  :: [Double]
+  -> T.Text
+  -> T.Text
+  -> Moore' (Identity Double, Double) (Annotated Histo1D)
+hist1DDef xs xt yt =
   Annotated [("XLabel", xt), ("YLabel", yt)]
-  . fmap (H1DD . over bins toArbBin)
-  <$> physObjH (hist1DFill (hEmpty b))
+  <$> mooreHisto1D xs
 
 
 hist2DDef
-  :: (BinValue b ~ Double, IntervalBin b)
-  => b -> b -> T.Text -> T.Text -> VarFill (Double, Double)
-hist2DDef bx by xt yt =
+  :: [Double]
+  -> [Double]
+  -> T.Text
+  -> T.Text
+  -> Moore' (TF Double, Double) (Annotated Histo2D)
+hist2DDef xs ys xt yt =
   Annotated [("XLabel", xt), ("YLabel", yt)]
-  . fmap (H2DD . over bins (fmapBinX toArbBin . fmapBinY toArbBin))
-  <$> physObjH (hist2DFill (hEmpty $ Bin2D bx by))
+  <$> mooreHisto2D xs ys
 
 
 prof1DDef
-  :: (BinValue b ~ Double, IntervalBin b)
-  => b -> T.Text -> T.Text -> VarFill (Double, Double)
-prof1DDef b xt yt =
+  :: [Double]
+  -> T.Text
+  -> T.Text
+  -> Moore' (TF Double, Double) (Annotated Prof1D)
+prof1DDef xs xt yt =
   Annotated [("XLabel", xt), ("YLabel", yt)]
-  . fmap (P1DD . over bins toArbBin)
-  <$> physObjH (prof1DFill (hEmpty b))
+  <$> mooreProf1D xs
 
 
-cut :: (Alternative m, Monad m) => (a -> m Bool) -> a -> m ()
-cut c o = do
-  p <- c o
-  guard p
+-- TODO
+-- channels
+-- should just be a layerF
 
 
-channel
-  :: (Alternative m, Monad m)
-  => (a -> m Bool) -> Foldl (m a) r -> Foldl (m a) r
-channel c = prebind (\x -> cut c x >> return x)
+nH :: Foldable t => Integer -> Moore' (t x, Double) (Annotated Histo1D)
+nH nmax =
+  hist1DDef (evenBins' 0 nmax (fromIntegral nmax)) "$n$" (dndx "n" "1")
+  <$= first' (fromIntegral . length)
 
 
-channelWithLabel
-  :: (Alternative m, Monad m)
-  => T.Text
-  -> (a -> m Bool)
-  -> Foldl (m a) (Folder b)
-  -> Foldl (m a) (Folder b)
-channelWithLabel n f = fmap (prefixF n) . channel f
-
-
-channelsWithLabels
-  :: (Alternative m, Monad m, Semigroup b)
-  => [(T.Text, a -> m Bool)]
-  -> Foldl (m a) (Folder b)
-  -> Foldl (m a) (Folder b)
-channelsWithLabels fns fills =
-  mconcat $ uncurry channelWithLabel <$> fns <*> pure fills
-
-
-nH :: Foldable t => Int -> VarFill (t a)
-nH n =
-  hist1DDef (binD 0 n (fromIntegral n)) "$n$" (dndx "n" "1")
-  <$= fmap (fromIntegral . length)
-
-
-ptH :: HasLorentzVector a => VarFill a
+ptH :: HasLorentzVector a => Moore' (a, Double) (Annotated Histo1D)
 ptH =
-  hist1DDef
-    (logBinD 20 25 500) -- :: TransformedBin BinD (Log10BT Double))
-    "$p_{\\mathrm T}$ [GeV]"
-    (dndx pt gev)
-    <$= fmap (view lvPt)
+  hist1DDef (logBins' 20 25 500) "$p_{\\mathrm T}$ [GeV]" (dndx pt gev)
+  <$= first' (Identity . view lvPt)
 
 
-etaH :: HasLorentzVector a => VarFill a
+etaH :: HasLorentzVector a => Moore' (a, Double) (Annotated Histo1D)
 etaH =
-  hist1DDef (binD (-3) 39 3) "$\\eta$" (dndx "\\eta" "{\\mathrm rad}")
-    <$= fmap (view lvEta)
+  hist1DDef (evenBins' (-3) 39 3) "$\\eta$" (dndx "\\eta" "{\\mathrm rad}")
+  <$= first' (Identity . view lvEta)
 
 
-lvHs :: HasLorentzVector a => VarFills a
-lvHs =
-  mconcat
-  [ singleton "/pt" <$> ptH
-  , singleton "/eta" <$> etaH
-  ]
+lvHs
+  :: HasLorentzVector a
+  => Moore' (a, Double) (Both (Annotated Histo1D) (Annotated Histo1D))
+lvHs = bisequenceA $ Both ptH etaH
 
 
 
@@ -190,17 +134,3 @@ mev = "\\mathrm{MeV}"
 gev = "\\mathrm{GeV}"
 rad = "\\mathrm{rad}"
 pt = "p_{\\mathrm{T}}"
-
-
--- innerF :: Monad m => (a -> m b) -> Foldl (m b) c -> Foldl (m a) c
--- innerF g = F.premap (g =<<)
---
--- -- outerM :: Monad m => (a -> m b) -> Foldl (m b) (m c) -> Foldl (m a) (m c)
--- -- outerM g (Foldl comb start done) = Foldl comb' start' done'
--- --   where
--- --     start' = return start
--- --     done' x = done =<< x
--- --     comb' mx ma = flip comb (g =<< ma) <$> mx
--- --
--- -- outer :: Applicative m => (a -> m b) -> Foldl b c -> Foldl a (m c)
--- -- outer g = F.premap g . liftFA

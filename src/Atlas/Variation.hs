@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable         #-}
+{-# LANGUAGE TupleSections         #-}
 {-# LANGUAGE DeriveGeneric              #-}
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -8,7 +9,7 @@
 
 module Atlas.Variation
   ( module X
-  , Vars, VarMap
+  , Vars, VarMap, copyVars
   , variationToMap, mapToVariation
   , StrictMap, strictMap, unSM, liftSM, liftSM2
   , singleton, inSM
@@ -35,15 +36,22 @@ import           Prelude              hiding (lookup)
 type VarMap = StrictMap T.Text
 type Vars = Variation VarMap
 
+
+copyVars :: [T.Text] -> a -> Vars a
+copyVars ts a = Variation a . SM . HM.fromList $ (, a) <$> ts
+
+
 newtype StrictMap k a = SM { unSM :: HM.HashMap k a }
   deriving (Show, Eq, Data, Typeable, Generic)
 
 makePrisms ''StrictMap
 
+
 variationToMap
   :: (IxValue (t a) ~ a, At (t a))
   => Index (t a) -> Variation t a -> t a
 variationToMap k (Variation x xs) = xs & at k ?~ x
+
 
 mapToVariation
   :: (Eq k, Ord k, Hashable k)
@@ -52,25 +60,32 @@ mapToVariation k m = do
   n <- m ^? ix k
   return . Variation n $ sans k m
 
+
 strictMap :: HM.HashMap k a -> StrictMap k a
 strictMap = SM . force
+
 
 force :: HM.HashMap k a -> HM.HashMap k a
 force m = HM.foldl' (flip seq) () m `seq` m
 
+
 singleton :: Hashable k => k -> a -> StrictMap k a
 singleton k = SM . HM.singleton k
+
 
 instance (Ord k, Hashable k, Serialize k, Serialize a)
   => Serialize (StrictMap k a) where
   put = put . HM.toList . unSM
   get = strictMap . HM.fromList <$> get
 
+
 inSM :: (HM.HashMap t1 t2 -> t) -> StrictMap t1 t2 -> t
 inSM f (SM m) = f m
 
+
 liftSM :: (HM.HashMap k1 a1 -> HM.HashMap k a) -> StrictMap k1 a1 -> StrictMap k a
 liftSM f = strictMap . f . unSM
+
 
 liftSM2
   :: (HM.HashMap t2 t3 -> HM.HashMap t t1 -> HM.HashMap k a)
@@ -79,18 +94,21 @@ liftSM2
   -> StrictMap k a
 liftSM2 f (SM sm) (SM sm') = strictMap $ f sm sm'
 
+
 type instance Key (StrictMap k) = k
+
 
 instance Keyed (StrictMap k) where
   mapWithKey f (SM m) = SM $ HM.mapWithKey f m
+
 
 instance FoldableWithKey (StrictMap k) where
   foldMapWithKey f = foldMapWithKey f . unSM
 
 
-
 mapMaybeWithKey :: (k -> a1 -> Maybe a) -> StrictMap k a1 -> StrictMap k a
 mapMaybeWithKey f (SM m) = SM $ HM.mapMaybeWithKey f m
+
 
 intersectionWith
   :: (Hashable k, Ord k)

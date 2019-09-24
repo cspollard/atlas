@@ -2,10 +2,13 @@ flags: {}
 extra-package-dbs: []
 packages:
 - '.'
-- location:
-    git: https://github.com/cspollard/histogram-extras.git
-    commit: ce6efb1dc0b8361b5f19e20c7ff67d1a73287ac8
-  extra-dep: true
+- '/Users/cspollard/Programming/histogram-extras.git'
+- '/Users/cspollard/Programming/profunctor-hep.git'
+
+# - location:
+#     git: https://github.com/cspollard/histogram-extras.git
+#     commit: ce6efb1dc0b8361b5f19e20c7ff67d1a73287ac8
+#   extra-dep: true
 
 - location:
     git: https://github.com/cspollard/variation.git
@@ -17,9 +20,14 @@ packages:
     commit: 7b413750c82cc6ffd776c603de3e2c42ce8f9cb4
   extra-dep: true
 
-extra-deps:
-- histogram-fill-0.9.1.0
-- histogram-fill-cereal-0.8.5.0
-- cereal-text-0.1.0.2
+  # - location:    
+  #     git: https://github.com/cspollard/profunctor-hep.git    
+  #     commit: 7ae0ade9ba30d51fbe7a4ca052b75aec7f2f38de    
+  #   extra-dep: true    
 
-resolver: lts-11.22
+extra-deps:        
+- extensible-0.5.1            
+- membership-0            
+
+
+resolver: lts-13.25
