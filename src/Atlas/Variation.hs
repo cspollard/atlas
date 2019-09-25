@@ -1,3 +1,6 @@
+{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TypeFamilies #-}
+
 module Atlas.Variation
   ( module X
   , Vars, copyVars
