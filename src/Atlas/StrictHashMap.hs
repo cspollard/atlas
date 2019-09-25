@@ -7,8 +7,8 @@
 
 module Atlas.StrictHashMap
   ( module X
-  , StrictHashMap, strictHashMap, unSM, liftSM, liftSM2
-  , singleton, inSM, smFromList
+  , StrictHashMap, strictHashMap, unSHM, liftSHM, liftSHM2
+  , singleton, inSHM, shmFromList
   , lookup, intersectionWith, mapMaybeWithKey
   ) where
 
@@ -28,14 +28,14 @@ import           Linear.Matrix        (Trace (..))
 import           Prelude              hiding (lookup)
 
 
-newtype StrictHashMap k a = SM { unSM :: HM.HashMap k a }
+newtype StrictHashMap k a = SHM { unSHM :: HM.HashMap k a }
   deriving (Show, Eq, Data, Typeable, Generic)
 
 makePrisms ''StrictHashMap
 
 
 strictHashMap :: HM.HashMap k a -> StrictHashMap k a
-strictHashMap = SM . force
+strictHashMap = SHM . force
 
 
 force :: HM.HashMap k a -> HM.HashMap k a
@@ -43,76 +43,76 @@ force m = HM.foldl' (flip seq) () m `seq` m
 
 
 singleton :: Hashable k => k -> a -> StrictHashMap k a
-singleton k = SM . HM.singleton k
+singleton k = SHM . HM.singleton k
 
 
 instance (Ord k, Hashable k, Serialize k, Serialize a)
   => Serialize (StrictHashMap k a) where
-  put = put . HM.toList . unSM
+  put = put . HM.toList . unSHM
   get = strictHashMap . HM.fromList <$> get
 
 
-smFromList :: (Hashable k, Ord k) => [(k, a)] -> StrictHashMap k a
-smFromList = fromList
+shmFromList :: (Hashable k, Ord k) => [(k, a)] -> StrictHashMap k a
+shmFromList = fromList
 
 
-inSM :: (HM.HashMap t1 t2 -> t) -> StrictHashMap t1 t2 -> t
-inSM f (SM m) = f m
+inSHM :: (HM.HashMap t1 t2 -> t) -> StrictHashMap t1 t2 -> t
+inSHM f (SHM m) = f m
 
 
-liftSM :: (HM.HashMap k1 a1 -> HM.HashMap k a) -> StrictHashMap k1 a1 -> StrictHashMap k a
-liftSM f = strictHashMap . f . unSM
+liftSHM :: (HM.HashMap k1 a1 -> HM.HashMap k a) -> StrictHashMap k1 a1 -> StrictHashMap k a
+liftSHM f = strictHashMap . f . unSHM
 
 
-liftSM2
+liftSHM2
   :: (HM.HashMap t2 t3 -> HM.HashMap t t1 -> HM.HashMap k a)
   -> StrictHashMap t2 t3
   -> StrictHashMap t t1
   -> StrictHashMap k a
-liftSM2 f (SM sm) (SM sm') = strictHashMap $ f sm sm'
+liftSHM2 f (SHM sm) (SHM sm') = strictHashMap $ f sm sm'
 
 
 type instance Key (StrictHashMap k) = k
 
 
 instance Keyed (StrictHashMap k) where
-  mapWithKey f (SM m) = SM $ HM.mapWithKey f m
+  mapWithKey f (SHM m) = SHM $ HM.mapWithKey f m
 
 
 instance FoldableWithKey (StrictHashMap k) where
-  foldMapWithKey f = foldMapWithKey f . unSM
+  foldMapWithKey f = foldMapWithKey f . unSHM
 
 
 mapMaybeWithKey :: (k -> a1 -> Maybe a) -> StrictHashMap k a1 -> StrictHashMap k a
-mapMaybeWithKey f (SM m) = SM $ HM.mapMaybeWithKey f m
+mapMaybeWithKey f (SHM m) = SHM $ HM.mapMaybeWithKey f m
 
 
 intersectionWith
   :: (Hashable k, Ord k)
   => (a1 -> b -> a) -> StrictHashMap k a1 -> StrictHashMap k b -> StrictHashMap k a
-intersectionWith f (SM m) (SM m') = SM $ HM.intersectionWith f m m'
+intersectionWith f (SHM m) (SHM m') = SHM $ HM.intersectionWith f m m'
 
 instance Functor (StrictHashMap k) where
-  fmap f (SM m) = SM $ HM.map f m
+  fmap f (SHM m) = SHM $ HM.map f m
 
 instance Foldable (StrictHashMap k) where
-  foldr f start = foldr f start . unSM
+  foldr f start = foldr f start . unSHM
 
 instance Traversable (StrictHashMap k) where
-  traverse f (SM m) = SM <$> HM.traverseWithKey (const f) m
+  traverse f (SHM m) = SHM <$> HM.traverseWithKey (const f) m
 
 instance (Hashable k, Ord k) => Align (StrictHashMap k) where
   nil = mempty
-  align (SM m) (SM m') = strictHashMap $ align m m'
+  align (SHM m) (SHM m') = strictHashMap $ align m m'
 
 instance (Hashable k, Ord k) => Trace (StrictHashMap k) where
-  diagonal (SM m) = SM . force . diagonal $ unSM <$> m
+  diagonal (SHM m) = SHM . force . diagonal $ unSHM <$> m
 
 instance (Hashable k, Ord k) => Semigroup (StrictHashMap k a) where
-  SM m <> SM m' = SM $ HM.union m m'
+  SHM m <> SHM m' = SHM $ HM.union m m'
 
 instance (Hashable k, Ord k) => Monoid (StrictHashMap k a) where
-  mempty = SM HM.empty
+  mempty = SHM HM.empty
   mappend = (<>)
 
 type instance Index (StrictHashMap k a) = k
@@ -120,37 +120,37 @@ type instance IxValue (StrictHashMap k a) = a
 
 
 instance (Hashable k, Ord k) => FunctorWithIndex k (StrictHashMap k) where
-  imap f = over _SM (HM.mapWithKey f)
+  imap f = over _SHM (HM.mapWithKey f)
 
 instance (Hashable k, Ord k) => FoldableWithIndex k (StrictHashMap k) where
-  ifoldMap f (SM m) = ifoldMap f m
+  ifoldMap f (SHM m) = ifoldMap f m
 
 instance (Hashable k, Ord k) => TraversableWithIndex k (StrictHashMap k) where
-  itraverse f (SM m) = SM <$> itraverse f m
+  itraverse f (SHM m) = SHM <$> itraverse f m
 
 instance (Hashable k, Ord k) => At (StrictHashMap k a) where
-  at k f (SM m) =
+  at k f (SHM m) =
     f mv <&> \r -> case r of
-      Nothing -> maybe (SM m) (const (SM $ HM.delete k m)) mv
-      Just v' -> SM $ HM.insert k v' m
+      Nothing -> maybe (SHM m) (const (SHM $ HM.delete k m)) mv
+      Just v' -> SHM $ HM.insert k v' m
     where mv = HM.lookup k m
 
 
 instance (Hashable k, Ord k) => Ixed (StrictHashMap k a) where
-  ix k f (SM m) =
+  ix k f (SHM m) =
     case HM.lookup k m of
-     Just v  -> f v <&> \v' -> SM (HM.insert k v' m)
-     Nothing -> pure $ SM m
+     Just v  -> f v <&> \v' -> SHM (HM.insert k v' m)
+     Nothing -> pure $ SHM m
 
 
 instance (Hashable k, Ord k) => IsList (StrictHashMap k a) where
   type Item (StrictHashMap k a) = (k, a)
   fromList = strictHashMap . fromList
-  toList = toList . unSM
+  toList = toList . unSHM
 
 
 instance Show2 StrictHashMap where
-  liftShowsPrec2 spk slk spv slv d (SM m) =
+  liftShowsPrec2 spk slk spv slv d (SHM m) =
     showsUnaryWith (liftShowsPrec sp sl) "fromList" d (HM.toList m)
     where
       sp = liftShowsPrec2 spk slk spv slv

@@ -9,19 +9,21 @@
 {-# LANGUAGE TypeFamilies              #-}
 
 module Atlas.Histogramming
-  ( Fills, FolderAV
+  ( Fills
   , dsigdXpbY, dndx
   , mev, gev, rad, pt
   , layerVars, layerCut, physObjMoore
-  , hist1DDef, prof1DDef, hist2DDef
+  , histo1DDef, histo2DDef, histo1DDef', histo2DDef'
   , nH, ptH, etaH, lvHs
   , (<$=), (=$>), (=$$>), (=$<<)
-  , Histo1D, Prof1D, Histo2D
+  , Histo1D, Histo2D
+  , channel
   , module X
   ) where
 
 
 import Data.Tuple (swap)
+import qualified Data.Map.Strict as M
 import           Data.HEP.LorentzVector
 import Control.Lens (view)
 import Control.Category (Category)
@@ -40,9 +42,10 @@ import Atlas.ScaleFactor
 import Atlas.StrictMap
 
 
-type FolderAV a = Folder (Annotated (Vars a))
-
-type Fills a b = Moore' (PhysObj a) (FolderAV b)
+type Fills a =
+  Moore'
+    (PhysObj a)
+    (Folder (Annotated (Either' (Vars Histo1D) (Vars Histo2D))))
 
 
 infixl 2 =$>
@@ -85,42 +88,70 @@ physObjMoore m =
 
 
 type Histo1D = Binned Double (Gauss Identity Double)
-type Prof1D = Binned Double (Gauss TF Double)
 type Histo2D = Binned Double (Binned Double (Gauss TF Double))
 
 
-hist1DDef
+histo1DDef'
   :: [Double]
   -> T.Text
   -> T.Text
   -> Moore' (Double, Identity Double) (Annotated Histo1D)
-hist1DDef xs xt yt =
+histo1DDef' xs xt yt =
   Annotated [("XLabel", xt), ("YLabel", yt)]
   <$> mooreHisto1D xs
   <$= swap
 
 
-hist2DDef
+histo1DDef
+  :: [Double]
+  -> T.Text
+  -> T.Text
+  -> T.Text
+  -> Fills Double
+histo1DDef xs xt yt name =
+  singleton name . fmap Left' . sequenceA
+  <$> physObjMoore h
+
+  where
+    h = lmap (second' Identity) $ histo1DDef' xs xt yt
+
+
+histo2DDef'
   :: [Double]
   -> [Double]
   -> T.Text
   -> T.Text
   -> Moore' (Double, TF Double) (Annotated Histo2D)
-hist2DDef xs ys xt yt =
+histo2DDef' xs ys xt yt =
   Annotated [("XLabel", xt), ("YLabel", yt)]
   <$> mooreHisto2D xs ys
   <$= swap
 
 
-prof1DDef
+histo2DDef
   :: [Double]
+  -> [Double]
   -> T.Text
   -> T.Text
-  -> Moore' (Double, TF Double) (Annotated Prof1D)
-prof1DDef xs xt yt =
-  Annotated [("XLabel", xt), ("YLabel", yt)]
-  <$> mooreProf1D xs
-  <$= swap
+  -> T.Text
+  -> Fills (Double, Double)
+histo2DDef xs ys xt yt name =
+  singleton name . fmap Right' . sequenceA
+  <$> physObjMoore h
+
+  where
+    h = lmap (second' $ uncurry TF) $ histo2DDef' xs ys xt yt
+
+
+-- prof1DDef
+--   :: [Double]
+--   -> T.Text
+--   -> T.Text
+--   -> Moore' (Double, TF Double) (Annotated Prof1D)
+-- prof1DDef xs xt yt =
+--   Annotated [("XLabel", xt), ("YLabel", yt)]
+--   <$> mooreProf1D xs
+--   <$= swap
 
 
 -- TODO
@@ -128,28 +159,34 @@ prof1DDef xs xt yt =
 -- should just be a layerF
 
 
-nH :: Foldable t => Integer -> Moore' (Double, t x) (Annotated Histo1D)
+channel
+  :: (Functor f, Semigroup s)
+  => s -> f (StrictMap s a) -> f (StrictMap s a)
+channel s = fmap (liftSM $ M.mapKeysMonotonic (s <>))
+
+
+nH :: Foldable t => Integer -> Fills (t x)
 nH nmax =
-  hist1DDef (evenBins' 0 nmax (fromIntegral nmax)) "$n$" (dndx "n" "1")
-  <$= fmap (fromIntegral . length)
+  lmap (fmap $ fromIntegral . length)
+  $ histo1DDef (evenBins' 0 nmax (fromIntegral nmax)) "$n$" (dndx "n" "1") "/n"
 
 
-ptH :: HasLorentzVector a => Moore' (Double, a) (Annotated Histo1D)
+ptH :: HasLorentzVector a => Fills a
 ptH =
-  hist1DDef (logBins' 20 25 500) "$p_{\\mathrm T}$ [GeV]" (dndx pt gev)
-  <$= fmap (Identity . view lvPt)
+  lmap (fmap $ view lvPt)
+  $ histo1DDef (logBins' 20 25 500) "$p_{\\mathrm T}$ [GeV]" (dndx pt gev) "/pt"
 
 
-etaH :: HasLorentzVector a => Moore' (Double, a) (Annotated Histo1D)
+etaH :: HasLorentzVector a => Fills a
 etaH =
-  hist1DDef (evenBins' (-3) 39 3) "$\\eta$" (dndx "\\eta" "{\\mathrm rad}")
-  <$= fmap (Identity . view lvEta)
+  lmap (fmap $ view lvEta)
+  $ histo1DDef (evenBins' (-3) 39 3) "$\\eta$" (dndx "\\eta" "{\\mathrm rad}") "/eta"
 
 
 lvHs
   :: HasLorentzVector a
-  => Moore' (Double, a) (Both (Annotated Histo1D) (Annotated Histo1D))
-lvHs = bisequenceA $ Both ptH etaH
+  => Fills a
+lvHs = ptH <> etaH
 
 
 
