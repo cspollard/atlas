@@ -51,7 +51,7 @@ main = do
         sequence <$> hs'
 
   where
-    write :: String -> VarMap (Folder YodaObj) -> IO ()
+    write :: String -> Folder (Folder YodaObj) -> IO ()
     write outf hs =
       iforM_ hs $ \varname hs' ->
         withFile (outf ++ '/' : T.unpack varname ++ ".yoda") WriteMode $ \h ->

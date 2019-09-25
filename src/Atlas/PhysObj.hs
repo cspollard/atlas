@@ -9,6 +9,7 @@ module Atlas.PhysObj
   ) where
 
 import           Atlas.ScaleFactor
+import           Atlas.StrictHashMap
 import           Atlas.Variation
 import           Control.Applicative
 import           Control.Monad.Trans.Maybe
@@ -47,6 +48,8 @@ varSF :: Vars SF -> PhysObj ()
 varSF = PhysObj . MaybeT . WriterT . fmap (Just (),)
 
 
+-- TODO
+-- this is fugly
 collapsePO :: PhysObj [a] -> [PhysObj a]
 collapsePO po =
   let vs' = runPhysObj po
@@ -59,8 +62,6 @@ collapsePO po =
     goFold k = alignWith (goThese k)
 
     goThese k (This (x, s))     = singleton k (Just x, s)
-    -- TODO
-    -- dropping inefficiency SFs
     goThese k (That xs)         = singleton k (Nothing, mempty) `mappend` xs
     goThese k (These (x, s) xs) = singleton k (Just x, s) `mappend` xs
 
@@ -83,12 +84,12 @@ collapsePO po =
 --     where
 --       ct' = runChronicleT $ f <$> ct
 --
---       emptyVarMap :: VarMap (These SF a)
---       emptyVarMap = view variations $ const emptyThese <$> ct'
+--       emptyFolder :: Folder (These SF a)
+--       emptyFolder = view variations $ const emptyThese <$> ct'
 --
 --       go :: forall f b. Align f => Vars (These SF (f b)) -> f (Vars (These SF b))
 --       go (Variation x xs) =
---         let xs' :: f (VarMap (These SF b))
+--         let xs' :: f (Folder (These SF b))
 --             xs' =
 --               foldrWithKey (\k y ys -> alignWith (g k) y ys) nil
 --               $ sequenceL <$> xs
@@ -96,13 +97,13 @@ collapsePO po =
 --             x' = sequenceL x
 --         in alignWith h x' xs'
 --
---       g :: T.Text -> These (These SF b) (VarMap (These SF b)) -> VarMap (These SF b)
+--       g :: T.Text -> These (These SF b) (Folder (These SF b)) -> Folder (These SF b)
 --       g k (This x)     = singleton k x
 --       g k (That xs)    = singleton k emptyThese `mappend` xs
 --       g k (These x xs) = singleton k x `mappend` xs
 --
---       h :: These (These SF b) (VarMap (These SF b)) -> Vars (These SF b)
---       h = uncurry Variation . fromThese emptyThese emptyVarMap
+--       h :: These (These SF b) (Folder (These SF b)) -> Vars (These SF b)
+--       h = uncurry Variation . fromThese emptyThese emptyFolder
 --
 --
 --       emptyThese :: Monoid a => These a b
