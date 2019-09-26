@@ -9,7 +9,7 @@
 {-# LANGUAGE TypeFamilies              #-}
 
 module Atlas.Histogramming
-  ( Fills
+  ( Fills, AnaObjs
   , dsigdXpbY, dndx
   , mev, gev, rad, pt
   , layerVars, layerCut, physObjMoore
@@ -42,10 +42,9 @@ import Atlas.ScaleFactor
 import Atlas.StrictMap
 
 
-type Fills a =
-  Moore'
-    (PhysObj a)
-    (Folder (Annotated (Either' (Vars Histo1D) (Vars Histo2D))))
+type Fills a = Moore' (PhysObj a) AnaObjs
+
+type AnaObjs = Folder (Annotated (Either' (Vars Histo1D) (Vars Histo2D)))
 
 
 infixl 2 =$>
