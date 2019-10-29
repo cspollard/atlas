@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections     #-}
 
 module Main where
@@ -7,32 +8,30 @@ import           Atlas
 import           Data.Monoid
 import           Options.Applicative
 import           System.IO
+import qualified Data.ByteString.Lazy as BS
+import Atlas.Streaming
+import Atlas.ToYoda (ProcMap, ProcSums)
 
-data InArgs =
-  InArgs
-    { outfile :: String
-    , regex   :: [String]
-    , negex   :: [String]
-    , infiles :: [String]
-    }
+data InArgs
+  = InArgs
+  { outfile :: String
+  , infiles :: [String]
+  }
+
 
 inArgs :: Parser InArgs
 inArgs =
   InArgs
   <$> strOption
     ( long "outfile" <> short 'o' <> metavar "OUTFILE" )
-  <*> many
-    ( strOption (long "regex" <> metavar "REGEX=\".*\"") )
-  <*> many
-    ( strOption (long "negex" <> metavar "NEGEX=\"\"") )
   <*> some (strArgument (metavar "INFILES"))
+
 
 main :: IO ()
 main = do
   hSetBuffering stdout LineBuffering
   args <- execParser $ info (helper <*> inArgs) fullDesc
 
-  efol <- decodeFiles' (regex args) (negex args) (infiles args)
-  case efol of
-    Left err  -> error err
-    Right fol -> encodeFile (outfile args) fol
+  (pm :: ProcMap ProcSums) <- decodeFiles $ infiles args
+
+  encodeFile (outfile args) pm

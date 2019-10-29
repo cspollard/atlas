@@ -1,10 +1,10 @@
+{-# LANGUAGE ScopedTypeVariables  #-}
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Main where
 
 import           Atlas
-import           Atlas.ToYoda        (scaleH)
 import           Control.Lens        (iforM_)
 import           Data.Monoid
 import qualified Data.Text           as T
@@ -13,49 +13,63 @@ import           Options.Applicative
 import           Pipes
 import qualified Pipes.Prelude       as P
 import           System.IO
+import Data.Annotated
+import Both
+import Control.Lens (view)
+import Data.StrictMap
+import Data.StrictHashMap
+import Atlas.Streaming
+import Data.Bifunctor
+import Data.Bitraversable
+import Atlas.ToYoda
 
-data InArgs =
-  InArgs
-    { outfile :: String
-    , regex   :: [String]
-    , negex   :: [String]
-    , infile  :: String
-    }
-
-inArgs :: Parser InArgs
-inArgs =
-  InArgs
-  <$> strOption
-    ( long "outfolder" <> short 'o' <> metavar "OUTFOLDER" )
-  <*> many
-    ( strOption (long "regex" <> metavar "REGEX=\".*\"") )
-  <*> many
-    ( strOption (long "negex" <> metavar "NEGEX=\".*\"") )
-  <*> strArgument (metavar "INFILE")
+type FA a = Folder (Annotated a)
+type FAV a = Folder (Annotated (Vars a))
 
 main :: IO ()
-main = do
-  hSetBuffering stdout LineBuffering
-  args <- execParser $ info (helper <*> inArgs) fullDesc
-
-  efol <- decodeFile (regex args) (negex args) (infile args)
-  case efol of
-    Left err  -> error err
-    Right (proci, Sum wgt, hs) -> do
-      putStrLn "process info:"
-      print proci
-      putStrLn "sum of weights"
-      print wgt
-      let hs' = (fmap.fmap.fmap) (scaleH $ 1.0/wgt) hs
-      write (outfile args) . variationToMap "nominal" . sequence $
-        sequence <$> hs'
+main = mainWith writeVariations
 
   where
-    write :: String -> Folder (Folder YodaObj) -> IO ()
-    write outf hs =
-      iforM_ hs $ \varname hs' ->
-        withFile (outf ++ '/' : T.unpack varname ++ ".yoda") WriteMode $ \h ->
+    writeVariations outf pm =
+      iforM_ pm $ \proci aos -> do
+        putStrLn "process info:"
+        print proci
+
+        let go = sequence . fmap sequence
+
+            aos' :: Vars (Both (FA Histo1D) (FA Histo2D))
+            aos' = bitraverse go go aos
+
+        writeVariation (outf ++ "/" ++ show (dsid proci))
+          $ variationToMap "nominal" aos'
+
+
+    writeVariation
+      :: String
+      -> StrictHashMap T.Text (Both (FA Histo1D) (FA Histo2D))
+      -> IO ()
+
+    writeVariation prefix hs =
+      iforM_ hs $ \varname (Both h1d h2d) ->
+        withFile (prefix ++ "." ++ T.unpack varname ++ ".yoda") WriteMode $ \h ->
           runEffect
-          $ each (toList $ _toMap hs')
-            >-> P.map (T.unpack . uncurry printYodaObj)
+          $ each (toList h1d)
+            >-> P.map (T.unpack . uncurry printHisto1D)
             >-> P.toHandle h
+
+
+    printHisto1D pa o =
+      let h = view noted o
+          anns = view notes o
+      in T.unlines $
+          [ "# BEGIN YODA_HISTO1D " <> pa
+          , "Type=Histo1D"
+          , "Path=" <> pa
+          ]
+          ++ fmap (\(k, v) -> k <> "=" <> v) (toList anns)
+          ++
+            [ T.pack $ printBinned printGauss1D printInterval1D h
+            , "# END YODA_HISTO1D", ""
+            ]
+
+    -- printHisto2D = printBinned printGauss2D printInterval2D

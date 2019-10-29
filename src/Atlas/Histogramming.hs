@@ -9,7 +9,7 @@
 {-# LANGUAGE TypeFamilies              #-}
 
 module Atlas.Histogramming
-  ( Fills, AnaObjs
+  ( Fills, AnaObjs, Folder
   , dsigdXpbY, dndx
   , mev, gev, rad, pt
   , layerVars, layerCut, physObjMoore

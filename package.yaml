@@ -59,16 +59,16 @@ library:
   source-dirs: src
   ghc-options: -Wall
 
-# executables:
-#   run-atlas-hadd:
-#     source-dirs: app
-#     main: run-atlas-hadd.hs
-#     dependencies:
-#       - atlas
+executables:
+  run-atlas-hadd:
+    source-dirs: app
+    main: run-atlas-hadd.hs
+    dependencies:
+      - atlas
 
 
-#   run-atlas-dump:
-#     source-dirs: app
-#     main: run-atlas-dump.hs
-#     dependencies:
-#       - atlas
+  run-atlas-dump:
+    source-dirs: app
+    main: run-atlas-dump.hs
+    dependencies:
+      - atlas
