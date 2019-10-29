@@ -22,6 +22,7 @@ module Atlas.Histogramming
   ) where
 
 
+import Data.Bifunctor
 import Data.Tuple (swap)
 import qualified Data.Map.Strict as M
 import           Data.HEP.LorentzVector
@@ -31,20 +32,26 @@ import Data.Functor.Identity
 import           Data.Binned as X
 import           Data.Gauss as X
 import Data.Profunctor
-import Data.Bitraversable (bisequenceA)
 import Data.Annotated
-import           Data.Both
-import           Data.Moore as X
+import           Both
+import           Moore as X
 import qualified Data.Text              as T
 import Atlas.PhysObj
 import Atlas.Variation
 import Atlas.ScaleFactor
-import Atlas.StrictMap
+import Data.StrictMap
+import Data.Functor.Compose
 
 
+type Folder = StrictMap T.Text
+
+
+type Histo1D = Binned Double (Gauss Identity Double)
+type Histo2D = Compose (Binned Double) (Binned Double) (Gauss TF Double)
+
+type FAV a = Folder (Annotated (Vars a))
+type AnaObjs = Both (FAV Histo1D) (FAV Histo2D)
 type Fills a = Moore' (PhysObj a) AnaObjs
-
-type AnaObjs = Folder (Annotated (Either' (Vars Histo1D) (Vars Histo2D)))
 
 
 infixl 2 =$>
@@ -86,9 +93,6 @@ physObjMoore m =
   $ m
 
 
-type Histo1D = Binned Double (Gauss Identity Double)
-type Histo2D = Binned Double (Binned Double (Gauss TF Double))
-
 
 histo1DDef'
   :: [Double]
@@ -96,7 +100,7 @@ histo1DDef'
   -> T.Text
   -> Moore' (Double, Identity Double) (Annotated Histo1D)
 histo1DDef' xs xt yt =
-  Annotated [("XLabel", xt), ("YLabel", yt)]
+  annotated [("XLabel", xt), ("YLabel", yt)]
   <$> mooreHisto1D xs
   <$= swap
 
@@ -108,7 +112,7 @@ histo1DDef
   -> T.Text
   -> Fills Double
 histo1DDef xs xt yt name =
-  singleton name . fmap Left' . sequenceA
+  flip Both mempty . singleton name . sequenceA
   <$> physObjMoore h
 
   where
@@ -122,7 +126,7 @@ histo2DDef'
   -> T.Text
   -> Moore' (Double, TF Double) (Annotated Histo2D)
 histo2DDef' xs ys xt yt =
-  Annotated [("XLabel", xt), ("YLabel", yt)]
+  annotated [("XLabel", xt), ("YLabel", yt)]
   <$> mooreHisto2D xs ys
   <$= swap
 
@@ -135,13 +139,14 @@ histo2DDef
   -> T.Text
   -> Fills (Double, Double)
 histo2DDef xs ys xt yt name =
-  singleton name . fmap Right' . sequenceA
+  Both mempty . singleton name . sequenceA
   <$> physObjMoore h
 
   where
     h = lmap (second' $ uncurry TF) $ histo2DDef' xs ys xt yt
 
 
+-- needs work...
 -- prof1DDef
 --   :: [Double]
 --   -> T.Text
@@ -153,15 +158,13 @@ histo2DDef xs ys xt yt name =
 --   <$= swap
 
 
--- TODO
--- channels
--- should just be a layerF
-
-
 channel
-  :: (Functor f, Semigroup s)
-  => s -> f (StrictMap s a) -> f (StrictMap s a)
-channel s = fmap (liftSM $ M.mapKeysMonotonic (s <>))
+  :: forall s f g a b. (Bifunctor f, Functor g, Semigroup s)
+  => s -> g (f (StrictMap s a) (StrictMap s b)) -> g (f (StrictMap s a) (StrictMap s b))
+channel s = fmap $ bimap go go
+  where
+    go :: forall x. StrictMap s x -> StrictMap s x
+    go = liftSM $ M.mapKeysMonotonic (s <>)
 
 
 nH :: Foldable t => Integer -> Fills (t x)

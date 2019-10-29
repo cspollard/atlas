@@ -18,14 +18,14 @@ import           Data.Data
 import           Data.Functor.Classes
 import           Data.Hashable
 import qualified Data.HashMap.Strict  as HM
-import           Data.Key
+import           Data.Key hiding (zip)
 import           Data.Semigroup
 import           Data.Serialize
 import           Data.Variation       as X
 import           GHC.Exts             (IsList (..))
 import           GHC.Generics
 import           Linear.Matrix        (Trace (..))
-import           Prelude              hiding (lookup)
+import           Prelude              hiding (lookup, zip)
 
 
 newtype StrictHashMap k a = SHM { unSHM :: HM.HashMap k a }
@@ -101,9 +101,12 @@ instance Foldable (StrictHashMap k) where
 instance Traversable (StrictHashMap k) where
   traverse f (SHM m) = SHM <$> HM.traverseWithKey (const f) m
 
+instance (Hashable k, Ord k) => Semialign (StrictHashMap k) where
+  align (SHM m) (SHM m') = strictHashMap $ align m m'
+  zip (SHM m) (SHM m') = strictHashMap $ zip m m'
+
 instance (Hashable k, Ord k) => Align (StrictHashMap k) where
   nil = mempty
-  align (SHM m) (SHM m') = strictHashMap $ align m m'
 
 instance (Hashable k, Ord k) => Trace (StrictHashMap k) where
   diagonal (SHM m) = SHM . force . diagonal $ unSHM <$> m

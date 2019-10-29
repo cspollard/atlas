@@ -2,20 +2,13 @@ flags: {}
 extra-package-dbs: []
 packages:
 - '.'
+- '../variation.git'
+- '../histogram-extras.git'
+- '../moore.git'
+- '../hhep.git'
 
 extra-deps:        
   - extensible-0.5.1
-
   - membership-0
-
-  - git: https://github.com/cspollard/profunctor-hep.git
-    commit: 7ae0ade9ba30d51fbe7a4ca052b75aec7f2f38de
-
-  - git: https://github.com/cspollard/variation.git
-    commit: e9874a39eaae7d2675c070ffc9d05e7c97d8a3e3
-
-  - git: https://github.com/cspollard/histogram-extras.git
-    commit: 742118fb568afeda04d853244c8449c3b953ea2b
-
 
 resolver: lts-14.7

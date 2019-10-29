@@ -23,6 +23,7 @@ dependencies:
 - mmorph 
 - exceptions 
 - contravariant 
+- semialign
 - profunctors 
 - bifunctors 
 - deepseq 
@@ -51,8 +52,8 @@ dependencies:
 - variation 
 - hhep 
 - semigroupoids 
-- profunctor-hep
 - histogram-extras
+- moore
 
 library:
   source-dirs: src

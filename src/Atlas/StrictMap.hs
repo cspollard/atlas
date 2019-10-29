@@ -14,19 +14,18 @@ module Atlas.StrictMap
   , lookup, intersectionWith, mapMaybeWithKey
   ) where
 
+import           Prelude hiding (zip, lookup)
 import           Control.Lens
 import           Data.Align
 import           Data.Data
 import           Data.Functor.Classes
 import qualified Data.Map.Strict  as M
-import           Data.Key
-import           Data.Semigroup
+import           Data.Key hiding (zip)
 import           Data.Serialize
 import qualified Data.Text            as T
 import           GHC.Exts             (IsList (..))
 import           GHC.Generics
 import           Linear.Matrix        (Trace (..))
-import           Prelude              hiding (lookup)
 
 
 type Folder = StrictMap T.Text
@@ -105,9 +104,12 @@ instance Foldable (StrictMap k) where
 instance Traversable (StrictMap k) where
   traverse f (SM m) = SM <$> M.traverseWithKey (const f) m
 
+instance Ord k => Semialign (StrictMap k) where
+  align (SM m) (SM m') = strictMap $ align m m'
+  zip (SM m) (SM m') = strictMap $ zip m m'
+
 instance Ord k => Align (StrictMap k) where
   nil = mempty
-  align (SM m) (SM m') = strictMap $ align m m'
 
 instance Ord k => Trace (StrictMap k) where
   diagonal (SM m) = SM . force . diagonal $ unSM <$> m
