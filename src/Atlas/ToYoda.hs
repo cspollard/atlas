@@ -46,8 +46,7 @@ opts :: ParserInfo InArgs
 opts = info (helper <*> inArgs) fullDesc
 
 
-mainWith
-  :: (String -> ProcMap AnaObjs -> IO ()) -> IO ()
+mainWith :: (String -> ProcMap AnaObjs -> IO ()) -> IO ()
 mainWith writeFiles = do
   hSetBuffering stdout LineBuffering
   args <- execParser opts
