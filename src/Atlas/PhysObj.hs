@@ -9,7 +9,7 @@ module Atlas.PhysObj
   ) where
 
 import           Atlas.ScaleFactor
-import           Atlas.StrictHashMap
+import           Data.StrictHashMap
 import           Atlas.Variation
 import           Control.Applicative
 import           Control.Monad.Trans.Maybe

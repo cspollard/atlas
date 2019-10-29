@@ -8,7 +8,7 @@ module Atlas.Variation
   ) where
 
 import           Control.Lens
-import qualified Atlas.StrictHashMap as SHM
+import qualified Data.StrictHashMap as SHM
 import Data.Hashable
 import qualified Data.Text            as T
 import           Data.Variation       as X

@@ -40,14 +40,13 @@ import Atlas.PhysObj
 import Atlas.Variation
 import Atlas.ScaleFactor
 import Data.StrictMap
-import Data.Functor.Compose
 
 
 type Folder = StrictMap T.Text
 
 
 type Histo1D = Binned Double (Gauss Identity Double)
-type Histo2D = Compose (Binned Double) (Binned Double) (Gauss TF Double)
+type Histo2D = Binned2D Double Double (Gauss TF Double)
 
 type FAV a = Folder (Annotated (Vars a))
 type AnaObjs = Both (FAV Histo1D) (FAV Histo2D)
