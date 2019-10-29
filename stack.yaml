@@ -2,13 +2,18 @@ flags: {}
 extra-package-dbs: []
 packages:
 - '.'
-- '../variation.git'
-- '../histogram-extras.git'
-- '../moore.git'
-- '../hhep.git'
 
 extra-deps:        
-  - extensible-0.5.1
-  - membership-0
+  - git: https://github.com/cspollard/moore.git
+    commit: 0861f080fea82e20c01fbc7a12a8769768c58b67
+
+  - git: https://github.com/cspollard/variation.git
+    commit: 214c582b787052d0a13187f49b05b23cd1169bed
+
+  - git: https://github.com/cspollard/histogram-extras.git
+    commit: c4ec586c29c7533af0d3f8a3e7b0c575ebfdf3c7
+
+  - git: https://github.com/cspollard/hhep.git
+    commit: 403cceec53272397dbc96b4d12ece5d987be9709
 
 resolver: lts-14.7
