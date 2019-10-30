@@ -48,14 +48,19 @@ main = mainWith writeVariations
       :: String
       -> StrictHashMap T.Text (Both (FA Histo1D) (FA Histo2D))
       -> IO ()
-
     writeVariation prefix hs =
       iforM_ hs $ \varname (Both h1d h2d) ->
-        withFile (prefix ++ "." ++ T.unpack varname ++ ".yoda") WriteMode $ \h ->
+        withFile (prefix ++ "." ++ T.unpack varname ++ ".yoda") WriteMode
+        $ \h -> do
           runEffect
-          $ each (toList h1d)
-            >-> P.map (T.unpack . uncurry printHisto1D)
-            >-> P.toHandle h
+            $ each (toList h1d)
+              >-> P.map (T.unpack . uncurry printHisto1D)
+              >-> P.toHandle h
+
+          runEffect
+            $ each (toList h2d)
+              >-> P.map (T.unpack . uncurry printHisto2D)
+              >-> P.toHandle h
 
 
     printHisto1D pa o =
@@ -68,8 +73,20 @@ main = mainWith writeVariations
           ]
           ++ fmap (\(k, v) -> k <> "=" <> v) (toList anns)
           ++
-            [ T.pack $ printBinned printGauss1D printInterval1D h
+            [ T.pack $ printBinned1D printGauss1D h
             , "# END YODA_HISTO1D", ""
             ]
 
-    -- printHisto2D = printBinned printGauss2D printInterval2D
+    printHisto2D pa o =
+      let h = view noted o
+          anns = view notes o
+      in T.unlines $
+          [ "# BEGIN YODA_HISTO2D " <> pa
+          , "Type=Histo2D"
+          , "Path=" <> pa
+          ]
+          ++ fmap (\(k, v) -> k <> "=" <> v) (toList anns)
+          ++
+            [ T.pack $ printBinned2D printGauss2D h
+            , "# END YODA_HISTO2D", ""
+            ]

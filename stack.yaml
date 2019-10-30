@@ -11,7 +11,7 @@ extra-deps:
     commit: 214c582b787052d0a13187f49b05b23cd1169bed
 
   - git: https://github.com/cspollard/histogram-extras.git
-    commit: c4ec586c29c7533af0d3f8a3e7b0c575ebfdf3c7
+    commit: b010a5016446b15225b19376dffed4ad489d475e
 
   - git: https://github.com/cspollard/hhep.git
     commit: 403cceec53272397dbc96b4d12ece5d987be9709
