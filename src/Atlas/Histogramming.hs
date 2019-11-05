@@ -156,7 +156,7 @@ nH n =
 ptH :: HasLorentzVector a => VarFill a
 ptH =
   hist1DDef
-    (logBinD 20 25 500) -- :: TransformedBin BinD (Log10BT Double))
+    (logBinD 30 20 250) -- :: TransformedBin BinD (Log10BT Double))
     "$p_{\\mathrm T}$ [GeV]"
     (dndx pt gev)
     <$= fmap (view lvPt)
