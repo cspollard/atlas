@@ -149,7 +149,7 @@ channelsWithLabels fns fills =
 
 nH :: Foldable t => Int -> VarFill (t a)
 nH n =
-  hist1DDef (binD 0 n (fromIntegral n)) "$n$" (dndx "n" "1")
+  hist1DDef (binD 0 n (fromIntegral n)) "$n$" (dsigdXpbY "n" "1")
   <$= fmap (fromIntegral . length)
 
 
@@ -158,13 +158,13 @@ ptH =
   hist1DDef
     (logBinD 30 20 250) -- :: TransformedBin BinD (Log10BT Double))
     "$p_{\\mathrm T}$ [GeV]"
-    (dndx pt gev)
+    (dsigdXpbY pt gev)
     <$= fmap (view lvPt)
 
 
 etaH :: HasLorentzVector a => VarFill a
 etaH =
-  hist1DDef (binD (-3) 39 3) "$\\eta$" (dndx "\\eta" "{\\mathrm rad}")
+  hist1DDef (binD (-3) 39 3) "$\\eta$" (dsigdXpbY "\\eta" "{\\mathrm rad}")
     <$= fmap (view lvEta)
 
 
