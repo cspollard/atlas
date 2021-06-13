@@ -29,6 +29,7 @@ dependencies:
 - transformers 
 - mtl 
 - these 
+- semialign
 - keys 
 - foldl 
 - bytestring 

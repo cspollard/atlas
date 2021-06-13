@@ -106,9 +106,11 @@ instance Foldable (StrictMap k) where
 instance Traversable (StrictMap k) where
   traverse f (SM m) = SM <$> HM.traverseWithKey (const f) m
 
+instance (Hashable k, Ord k) => Semialign (StrictMap k) where
+  align (SM m) (SM m') = strictMap $ align m m'
+
 instance (Hashable k, Ord k) => Align (StrictMap k) where
   nil = mempty
-  align (SM m) (SM m') = strictMap $ align m m'
 
 instance (Hashable k, Ord k) => Trace (StrictMap k) where
   diagonal (SM m) = SM . force . diagonal $ unSM <$> m
